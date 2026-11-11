@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     username VARCHAR(80) NOT NULL,
+    full_name VARCHAR(150) NULL,
+    phone VARCHAR(30) NULL,
     password_hash VARCHAR(255) NOT NULL,
     role_id BIGINT UNSIGNED NOT NULL,
     employee_id BIGINT UNSIGNED NULL,
@@ -119,6 +121,21 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     KEY idx_audit_logs_table_record (table_name, record_id),
     KEY idx_audit_logs_created (created_at),
     CONSTRAINT fk_audit_logs_user
+        FOREIGN KEY (user_id) REFERENCES users (id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NULL,
+    action VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_activity_logs_user_created (user_id, created_at),
+    KEY idx_activity_logs_created (created_at, id),
+    CONSTRAINT fk_activity_logs_user
         FOREIGN KEY (user_id) REFERENCES users (id)
         ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -400,6 +417,31 @@ CREATE TABLE IF NOT EXISTS inventory_receipt_items (
     CONSTRAINT chk_inventory_receipt_items_values CHECK (
         qty > 0 AND price >= 0 AND total >= 0
     )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS product_serials (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    product_id BIGINT UNSIGNED NOT NULL,
+    serial_number VARCHAR(100) NOT NULL,
+    receipt_in_id BIGINT UNSIGNED NULL,
+    receipt_out_id BIGINT UNSIGNED NULL,
+    status ENUM('in_stock', 'sold', 'warranty') NOT NULL DEFAULT 'in_stock',
+    warranty_months INT UNSIGNED NOT NULL DEFAULT 12,
+    sold_date DATE NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_product_serials_serial_number (serial_number),
+    KEY idx_product_serials_product_status (product_id, status),
+    KEY idx_product_serials_receipt_in (receipt_in_id),
+    KEY idx_product_serials_receipt_out (receipt_out_id),
+    CONSTRAINT fk_product_serials_product
+        FOREIGN KEY (product_id) REFERENCES products (id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_product_serials_receipt_in
+        FOREIGN KEY (receipt_in_id) REFERENCES inventory_receipts (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_product_serials_receipt_out
+        FOREIGN KEY (receipt_out_id) REFERENCES inventory_receipts (id)
+        ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS customer_interactions (

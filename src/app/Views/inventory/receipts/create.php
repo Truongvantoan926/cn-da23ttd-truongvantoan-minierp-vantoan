@@ -91,6 +91,7 @@
 
                 <div id="receipt-items" class="vstack gap-3">
                     <?php foreach ($values['items'] as $index => $item): ?>
+                        <?php $selectedSerials = array_map('strval', $item['serial_numbers'] ?? []); ?>
                         <div class="row g-2 align-items-end border rounded p-3 mx-0" data-item-row>
                             <div class="col-lg-5">
                                 <label class="form-label">Sản phẩm <span class="text-danger">*</span></label>
@@ -148,6 +149,33 @@
                                     <i class="fa-solid fa-trash" aria-hidden="true"></i>
                                     <span class="d-lg-none ms-1">Xóa</span>
                                 </button>
+                            </div>
+                            <div class="col-12" data-serial-field hidden>
+                                <label class="form-label">Serial/IMEI xuất kho</label>
+                                <select
+                                    class="form-select"
+                                    name="items[<?= (int) $index ?>][serial_numbers][]"
+                                    multiple
+                                    size="4"
+                                    data-serial-select
+                                    disabled
+                                    aria-describedby="serial-help-<?= (int) $index ?>"
+                                >
+                                    <?php foreach ($serials as $serial): ?>
+                                        <?php if ($serial['status'] === 'in_stock'): ?>
+                                            <option
+                                                value="<?= htmlspecialchars((string) $serial['serial_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                                data-product-id="<?= htmlspecialchars((string) $serial['product_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                                <?= in_array((string) $serial['serial_number'], $selectedSerials, true) ? 'selected' : '' ?>
+                                            >
+                                                <?= htmlspecialchars((string) $serial['serial_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                            </option>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </select>
+                                <div class="form-text" id="serial-help-<?= (int) $index ?>">
+                                    Với sản phẩm có quản lý Serial/IMEI, hãy chọn đúng số lượng serial cần xuất.
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -209,6 +237,32 @@
                                 <span class="d-lg-none ms-1">Xóa</span>
                             </button>
                         </div>
+                        <div class="col-12" data-serial-field hidden>
+                            <label class="form-label">Serial/IMEI xuất kho</label>
+                            <select
+                                class="form-select"
+                                name="items[__INDEX__][serial_numbers][]"
+                                multiple
+                                size="4"
+                                data-serial-select
+                                disabled
+                                aria-label="Serial/IMEI xuất kho"
+                            >
+                                <?php foreach ($serials as $serial): ?>
+                                    <?php if ($serial['status'] === 'in_stock'): ?>
+                                        <option
+                                            value="<?= htmlspecialchars((string) $serial['serial_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                            data-product-id="<?= htmlspecialchars((string) $serial['product_id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                        >
+                                            <?= htmlspecialchars((string) $serial['serial_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                        </option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">
+                                Với sản phẩm có quản lý Serial/IMEI, hãy chọn đúng số lượng serial cần xuất.
+                            </div>
+                        </div>
                     </div>
                 </template>
 
@@ -242,6 +296,12 @@
     const itemTemplate = document.getElementById('receipt-item-template');
     const addItemButton = document.getElementById('add-item');
     let nextItemIndex = <?= count($values['items']) ?>;
+    const serialTrackedProducts = new Set(
+        <?= json_encode(
+            array_values(array_unique(array_map('strval', array_column($serials, 'product_id')))),
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        ) ?>.map(String)
+    );
 
     const filterPartners = (resetSelection) => {
         Array.from(partnerSelect.querySelectorAll('optgroup[data-type]')).forEach((group) => {
@@ -270,14 +330,38 @@
             : option.dataset.salePrice;
     };
 
+    const updateSerialField = (row) => {
+        const productSelect = row.querySelector('[data-product-select]');
+        const serialField = row.querySelector('[data-serial-field]');
+        const serialSelect = row.querySelector('[data-serial-select]');
+        const productId = productSelect.value;
+        const visible = typeSelect.value === 'OUT' && serialTrackedProducts.has(productId);
+
+        serialField.hidden = !visible;
+        serialSelect.disabled = !visible;
+        Array.from(serialSelect.options).forEach((option) => {
+            const matchesProduct = option.dataset.productId === productId;
+            option.hidden = !matchesProduct;
+            option.disabled = !matchesProduct;
+            if (!matchesProduct) {
+                option.selected = false;
+            }
+        });
+    };
+
     typeSelect.addEventListener('change', () => {
         filterPartners(true);
-        itemContainer.querySelectorAll('[data-item-row]').forEach(setSuggestedPrice);
+        itemContainer.querySelectorAll('[data-item-row]').forEach((row) => {
+            setSuggestedPrice(row);
+            updateSerialField(row);
+        });
     });
 
     itemContainer.addEventListener('change', (event) => {
         if (event.target.matches('[data-product-select]')) {
-            setSuggestedPrice(event.target.closest('[data-item-row]'));
+            const row = event.target.closest('[data-item-row]');
+            setSuggestedPrice(row);
+            updateSerialField(row);
         }
     });
 
@@ -293,6 +377,8 @@
             row.querySelector('[data-product-select]').value = '';
             row.querySelector('[name$=\"[qty]\"]').value = '';
             row.querySelector('[data-item-price]').value = '';
+            row.querySelector('[data-serial-select]').selectedIndex = -1;
+            updateSerialField(row);
             return;
         }
 
@@ -302,8 +388,31 @@
     addItemButton.addEventListener('click', () => {
         const html = itemTemplate.innerHTML.replace(/__INDEX__/g, String(nextItemIndex++));
         itemContainer.insertAdjacentHTML('beforeend', html);
+        updateSerialField(itemContainer.lastElementChild);
+    });
+
+    document.querySelector('form').addEventListener('submit', (event) => {
+        if (typeSelect.value !== 'OUT') {
+            return;
+        }
+
+        for (const row of itemContainer.querySelectorAll('[data-item-row]')) {
+            const productId = row.querySelector('[data-product-select]').value;
+            if (!serialTrackedProducts.has(productId)) {
+                continue;
+            }
+
+            const quantity = Number(row.querySelector('[name$=\"[qty]\"]').value);
+            const selectedCount = row.querySelector('[data-serial-select]').selectedOptions.length;
+            if (selectedCount !== quantity) {
+                event.preventDefault();
+                window.alert('Hãy chọn đúng số lượng Serial/IMEI cho từng sản phẩm.');
+                return;
+            }
+        }
     });
 
     filterPartners(false);
+    itemContainer.querySelectorAll('[data-item-row]').forEach(updateSerialField);
 })();
 </script>

@@ -1,22 +1,78 @@
+<style>
+@media print {
+    @page {
+        size: A4;
+        margin: 14mm;
+    }
+
+    html,
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    body {
+        display: block !important;
+        min-height: 0 !important;
+    }
+
+    header.navbar,
+    aside,
+    .no-print {
+        display: none !important;
+    }
+
+    .d-flex.flex-grow-1,
+    main {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .card {
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .card-body {
+        padding: 0 !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    .signature-area {
+        break-inside: avoid;
+    }
+}
+</style>
+
 <main class="container flex-grow-1 py-4 py-lg-5">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 no-print">
         <a class="text-decoration-none" href="<?= BASE_URL ?>/receipt/index">
             <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>
             Danh sách giao dịch kho
         </a>
         <button class="btn btn-outline-secondary" type="button" onclick="window.print()">
             <i class="fa-solid fa-print me-2" aria-hidden="true"></i>
-            In phiếu
+            In phiếu kho
         </button>
     </div>
 
     <?php $isInbound = $receipt['type'] === 'IN'; ?>
     <section class="card border-0 shadow-sm mx-auto" style="max-width: 1000px;">
         <div class="card-body p-4 p-lg-5">
+            <div class="text-center mb-4">
+                <div class="fw-bold text-uppercase">Công ty / Doanh nghiệp</div>
+                <h1 class="h4 text-uppercase mt-3 mb-1"><?= $isInbound ? 'Phiếu nhập kho' : 'Phiếu xuất kho' ?></h1>
+                <div class="text-secondary">Mã phiếu: <?= htmlspecialchars((string) $receipt['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></div>
+            </div>
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 border-bottom pb-4 mb-4">
                 <div>
                     <p class="text-uppercase text-secondary small fw-semibold mb-2">Chứng từ kho</p>
-                    <h1 class="h3 mb-2"><?= $isInbound ? 'Phiếu nhập kho' : 'Phiếu xuất kho' ?></h1>
+                    <h2 class="h5 mb-2"><?= $isInbound ? 'Phiếu nhập kho' : 'Phiếu xuất kho' ?></h2>
                     <span class="badge <?= $isInbound ? 'text-bg-success' : 'text-bg-danger' ?>">
                         <?= $isInbound ? 'IN · Nhập' : 'OUT · Xuất' ?>
                     </span>
@@ -91,6 +147,24 @@
                     </div>
                 </div>
             <?php endif; ?>
+
+            <div class="row text-center mt-5 signature-area">
+                <div class="col-4">
+                    <div class="fw-semibold">Người lập phiếu</div>
+                    <div class="text-secondary small">(Ký, ghi rõ họ tên)</div>
+                    <div style="height: 90px;"></div>
+                </div>
+                <div class="col-4">
+                    <div class="fw-semibold">Người giao hàng</div>
+                    <div class="text-secondary small">(Ký, ghi rõ họ tên)</div>
+                    <div style="height: 90px;"></div>
+                </div>
+                <div class="col-4">
+                    <div class="fw-semibold">Thủ kho</div>
+                    <div class="text-secondary small">(Ký, ghi rõ họ tên)</div>
+                    <div style="height: 90px;"></div>
+                </div>
+            </div>
         </div>
     </section>
 </main>

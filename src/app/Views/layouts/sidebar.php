@@ -47,6 +47,10 @@
                 Giao dịch kho
             </a>
             <?php endif; ?>
+            <a class="nav-link" href="<?= BASE_URL ?>/warranty/index">
+                <i class="fa-solid fa-shield-halved me-2" aria-hidden="true"></i>
+                Bảo hành &amp; IMEI
+            </a>
             <?php endif; ?>
             <?php if ($canAccessCrm): ?>
             <div class="mt-4 px-3 text-uppercase text-secondary small fw-semibold">Đối tác (CRM)</div>
@@ -64,6 +68,13 @@
             <a class="nav-link" href="<?= BASE_URL ?>/finance/index">
                 <i class="fa-solid fa-money-bill-transfer me-2" aria-hidden="true"></i>
                 Sổ quỹ Thu/Chi
+            </a>
+            <?php endif; ?>
+            <?php if ($isAdminOrManager): ?>
+            <div class="mt-4 px-3 text-uppercase text-secondary small fw-semibold">Quản trị</div>
+            <a class="nav-link" href="<?= BASE_URL ?>/log/index">
+                <i class="fa-solid fa-clipboard-list me-2" aria-hidden="true"></i>
+                Nhật ký hệ thống
             </a>
             <?php endif; ?>
         </nav>

@@ -7,9 +7,11 @@ namespace App\Controllers;
 use App\Core\AuthMiddleware;
 use App\Core\Controller;
 use App\Core\Database;
+use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Product;
+use App\Models\ProductSerial;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
 use App\Models\Supplier;
@@ -145,6 +147,20 @@ final class ReceiptController extends Controller
                     $stockIn->execute(['qty' => $quantity, 'product_id' => $productId]);
                 }
 
+                if ($type === 'OUT' && $item['serial_numbers'] !== []) {
+                    $serialError = $this->markSerialsSold(
+                        $pdo,
+                        $productId,
+                        $item['serial_numbers'],
+                        $receiptId
+                    );
+                    if ($serialError !== null) {
+                        $pdo->rollBack();
+                        $this->renderForm($values, $serialError);
+                        return;
+                    }
+                }
+
                 $itemInsert->execute([
                     'receipt_id' => $receiptId,
                     'product_id' => $productId,
@@ -167,6 +183,10 @@ final class ReceiptController extends Controller
             );
             $receiptUpdate->execute(['total' => $total, 'receipt_id' => $receiptId]);
 
+            (new ActivityLog())->log(
+                'receipt.create',
+                sprintf('Lập phiếu %s (#%d), loại %s.', $receiptCode, $receiptId, $type)
+            );
             $pdo->commit();
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -221,6 +241,7 @@ final class ReceiptController extends Controller
             'error' => $error,
             'pageTitle' => 'Tạo phiếu kho - Mini ERP',
             'products' => (new Product())->findAll(),
+            'serials' => (new ProductSerial())->getAllForReceiptForm(),
             'suppliers' => $suppliers ?? (new Supplier())->findAll(),
             'values' => $values,
         ]);
@@ -233,7 +254,7 @@ final class ReceiptController extends Controller
             'partner_id' => '',
             'employee_id' => '',
             'note' => '',
-            'items' => [['product_id' => '', 'qty' => '', 'price' => '']],
+            'items' => [['product_id' => '', 'qty' => '', 'price' => '', 'serial_numbers' => []]],
             'invalid_items' => false,
         ];
     }
@@ -264,11 +285,33 @@ final class ReceiptController extends Controller
                 $value = $postedItem[$field] ?? '';
                 $item[$field] = is_scalar($value) ? trim((string) $value) : '';
             }
+
+            $postedSerials = $postedItem['serial_numbers'] ?? [];
+            if (!is_array($postedSerials) || count($postedSerials) > self::MAX_ITEMS) {
+                $values['invalid_items'] = true;
+                $item['serial_numbers'] = [];
+            } else {
+                $item['serial_numbers'] = [];
+                foreach ($postedSerials as $serialNumber) {
+                    if (!is_string($serialNumber)) {
+                        $values['invalid_items'] = true;
+                        continue;
+                    }
+
+                    $item['serial_numbers'][] = trim($serialNumber);
+                }
+            }
+
             $values['items'][] = $item;
         }
 
         if ($values['items'] === []) {
-            $values['items'][] = ['product_id' => '', 'qty' => '', 'price' => ''];
+            $values['items'][] = [
+                'product_id' => '',
+                'qty' => '',
+                'price' => '',
+                'serial_numbers' => [],
+            ];
         }
 
         return $values;
@@ -310,8 +353,15 @@ final class ReceiptController extends Controller
 
         $validItemCount = 0;
         $productModel = new Product();
+        $serialModel = new ProductSerial();
+        $usedSerialNumbers = [];
         foreach ($values['items'] as $item) {
-            if ($item['product_id'] === '' && $item['qty'] === '' && $item['price'] === '') {
+            if (
+                $item['product_id'] === ''
+                && $item['qty'] === ''
+                && $item['price'] === ''
+                && $item['serial_numbers'] === []
+            ) {
                 continue;
             }
 
@@ -334,6 +384,39 @@ final class ReceiptController extends Controller
                 return 'Một sản phẩm được chọn không còn tồn tại.';
             }
 
+            if ($values['type'] === 'OUT') {
+                $isSerialTracked = $serialModel->hasSerialsForProduct($item['product_id']);
+                if ($isSerialTracked && count($item['serial_numbers']) !== (int) $item['qty']) {
+                    return 'Vui lòng chọn đúng số lượng Serial/IMEI cho sản phẩm.';
+                }
+
+                if (!$isSerialTracked && $item['serial_numbers'] !== []) {
+                    return 'Sản phẩm này không quản lý Serial/IMEI.';
+                }
+
+                foreach ($item['serial_numbers'] as $serialNumber) {
+                    if (
+                        preg_match('/\A[^\r\n\0]{1,100}\z/u', $serialNumber) !== 1
+                        || isset($usedSerialNumbers[bin2hex($serialNumber)])
+                    ) {
+                        return 'Serial/IMEI được chọn không hợp lệ hoặc bị trùng.';
+                    }
+
+                    $serial = $serialModel->findBySerial($serialNumber);
+                    if (
+                        $serial === null
+                        || (int) $serial['product_id'] !== (int) $item['product_id']
+                        || $serial['status'] !== 'in_stock'
+                    ) {
+                        return 'Một hoặc nhiều Serial/IMEI không còn trong kho.';
+                    }
+
+                    $usedSerialNumbers[bin2hex($serialNumber)] = true;
+                }
+            } elseif ($item['serial_numbers'] !== []) {
+                return 'Chỉ được chọn Serial/IMEI cho phiếu xuất kho.';
+            }
+
             $validItemCount++;
         }
 
@@ -351,6 +434,7 @@ final class ReceiptController extends Controller
             static fn (array $item): bool => $item['product_id'] !== ''
                 || $item['qty'] !== ''
                 || $item['price'] !== ''
+                || $item['serial_numbers'] !== []
         ));
     }
 
@@ -373,6 +457,58 @@ final class ReceiptController extends Controller
         if ($statement->fetchColumn() === false) {
             throw new RuntimeException('Nhân viên lập phiếu không còn tồn tại.');
         }
+    }
+
+    private function markSerialsSold(
+        PDO $pdo,
+        int $productId,
+        array $serialNumbers,
+        int $receiptId
+    ): ?string {
+        $placeholders = [];
+        $parameters = ['product_id' => $productId];
+        foreach (array_values($serialNumbers) as $index => $serialNumber) {
+            $placeholder = 'serial_' . $index;
+            $placeholders[] = ':' . $placeholder;
+            $parameters[$placeholder] = $serialNumber;
+        }
+
+        $statement = $pdo->prepare(
+            'SELECT id, status FROM product_serials '
+            . 'WHERE product_id = :product_id '
+            . 'AND serial_number IN (' . implode(', ', $placeholders) . ') '
+            . 'FOR UPDATE'
+        );
+        $statement->execute($parameters);
+        $serials = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($serials) !== count($serialNumbers)) {
+            return 'Một hoặc nhiều Serial/IMEI không còn trong kho.';
+        }
+
+        $update = $pdo->prepare(
+            'UPDATE product_serials '
+            . 'SET status = :status, sold_date = :sold_date, receipt_out_id = :receipt_out_id '
+            . 'WHERE id = :id AND status = :in_stock'
+        );
+        foreach ($serials as $serial) {
+            if ($serial['status'] !== 'in_stock') {
+                return 'Một hoặc nhiều Serial/IMEI không còn trong kho.';
+            }
+
+            $update->execute([
+                'status' => 'sold',
+                'sold_date' => date('Y-m-d'),
+                'receipt_out_id' => $receiptId,
+                'id' => $serial['id'],
+                'in_stock' => 'in_stock',
+            ]);
+            if ($update->rowCount() !== 1) {
+                return 'Không thể cập nhật trạng thái Serial/IMEI.';
+            }
+        }
+
+        return null;
     }
 
     private function isPostRequest(): bool

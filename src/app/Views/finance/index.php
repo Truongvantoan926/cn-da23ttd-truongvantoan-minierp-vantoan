@@ -4,10 +4,16 @@
             <h1 class="h3 mb-1">Sổ quỹ Thu/Chi</h1>
             <p class="text-secondary mb-0">Theo dõi các giao dịch và số dư quỹ</p>
         </div>
-        <a class="btn btn-primary" href="<?= BASE_URL ?>/finance/create">
-            <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
-            Lập phiếu Thu/Chi
-        </a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-success" href="<?= BASE_URL ?>/finance/exportCsv">
+                <i class="fa-solid fa-file-csv me-2" aria-hidden="true"></i>
+                Xuất Excel/CSV
+            </a>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>/finance/create">
+                <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
+                Lập phiếu Thu/Chi
+            </a>
+        </div>
     </div>
 
     <div class="row g-3 mb-4">

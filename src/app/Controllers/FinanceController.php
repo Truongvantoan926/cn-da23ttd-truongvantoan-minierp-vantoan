@@ -29,6 +29,45 @@ final class FinanceController extends Controller
         ]);
     }
 
+    public function exportCsv(): void
+    {
+        AuthMiddleware::checkRole([1, 2, 3]);
+
+        $transactions = (new Transaction())->getAllWithUser();
+        $output = fopen('php://output', 'wb');
+        if ($output === false) {
+            throw new \RuntimeException('Không thể khởi tạo tệp CSV.');
+        }
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="so-quy-thu-chi.csv"');
+        header('X-Content-Type-Options: nosniff');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv(
+            $output,
+            ['Mã phiếu', 'Loại', 'Danh mục', 'Số tiền', 'Phương thức', 'Ngày giao dịch', 'Người lập', 'Ghi chú'],
+            ',',
+            '"',
+            ''
+        );
+
+        foreach ($transactions as $transaction) {
+            fputcsv($output, [
+                $this->csvText($transaction['code']),
+                $transaction['type'] === 'income' ? 'Thu' : 'Chi',
+                $this->csvText($transaction['category']),
+                (string) $transaction['amount'],
+                $this->csvText($transaction['payment_method']),
+                (string) $transaction['trans_date'],
+                $this->csvText($transaction['created_by_name'] ?? ''),
+                $this->csvText($transaction['note'] ?? ''),
+            ], ',', '"', '');
+        }
+
+        fclose($output);
+        exit;
+    }
+
     public function create(): void
     {
         $this->renderForm($this->emptyValues());
@@ -79,6 +118,15 @@ final class FinanceController extends Controller
             'paymentMethods' => self::PAYMENT_METHODS,
             'values' => $values,
         ]);
+    }
+
+    private function csvText(mixed $value): string
+    {
+        $text = (string) ($value ?? '');
+
+        return preg_match('/\A[\x00-\x20]*[=+\-@]/', $text) === 1
+            ? "'" . $text
+            : $text;
     }
 
     private function emptyValues(): array

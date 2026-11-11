@@ -6,9 +6,12 @@ namespace App\Controllers;
 
 use App\Core\AuthMiddleware;
 use App\Core\Controller;
+use App\Core\Database;
+use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Product;
 use PDOException;
+use Throwable;
 
 final class ProductController extends Controller
 {
@@ -20,6 +23,38 @@ final class ProductController extends Controller
     public function index(): void
     {
         $this->renderIndex();
+    }
+
+    public function exportCsv(): void
+    {
+        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
+
+        $products = (new Product())->getAllWithCategory();
+        $output = fopen('php://output', 'wb');
+        if ($output === false) {
+            throw new \RuntimeException('Không thể khởi tạo tệp CSV.');
+        }
+
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="danh-sach-san-pham.csv"');
+        header('X-Content-Type-Options: nosniff');
+        fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, ['SKU', 'Tên sản phẩm', 'Danh mục', 'Đơn vị tính', 'Giá vốn', 'Giá bán', 'Tồn kho'], ',', '"', '');
+
+        foreach ($products as $product) {
+            fputcsv($output, [
+                $this->csvText($product['sku']),
+                $this->csvText($product['name']),
+                $this->csvText($product['category_name'] ?? ''),
+                $this->csvText($product['unit']),
+                (string) $product['cost_price'],
+                (string) $product['sale_price'],
+                (string) $product['stock_qty'],
+            ], ',', '"', '');
+        }
+
+        fclose($output);
+        exit;
     }
 
     public function create(): void
@@ -51,15 +86,26 @@ final class ProductController extends Controller
             return;
         }
 
+        $pdo = Database::getInstance()->getConnection();
         try {
-            (new Product())->insert($this->databaseValues($values));
-        } catch (PDOException $exception) {
-            if ($exception->getCode() !== '23000') {
-                throw $exception;
+            $pdo->beginTransaction();
+            $productId = (new Product())->insert($this->databaseValues($values));
+            (new ActivityLog())->log(
+                'product.create',
+                sprintf('Tạo sản phẩm #%s (SKU: %s).', $productId, $values['sku'])
+            );
+            $pdo->commit();
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
 
-            $this->renderForm('create', $values, 'SKU đã tồn tại hoặc danh mục không còn hợp lệ.');
-            return;
+            if ($exception instanceof PDOException && $exception->getCode() === '23000') {
+                $this->renderForm('create', $values, 'SKU đã tồn tại hoặc danh mục không còn hợp lệ.');
+                return;
+            }
+
+            throw $exception;
         }
 
         $this->redirect('/product/index');
@@ -112,15 +158,26 @@ final class ProductController extends Controller
             return;
         }
 
+        $pdo = Database::getInstance()->getConnection();
         try {
+            $pdo->beginTransaction();
             $model->update($id, $this->databaseValues($values));
-        } catch (PDOException $exception) {
-            if ($exception->getCode() !== '23000') {
-                throw $exception;
+            (new ActivityLog())->log(
+                'product.update',
+                sprintf('Cập nhật sản phẩm #%s (SKU: %s).', $id, $values['sku'])
+            );
+            $pdo->commit();
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
             }
 
-            $this->renderForm('edit', $values, 'SKU đã tồn tại hoặc danh mục không còn hợp lệ.', $product);
-            return;
+            if ($exception instanceof PDOException && $exception->getCode() === '23000') {
+                $this->renderForm('edit', $values, 'SKU đã tồn tại hoặc danh mục không còn hợp lệ.', $product);
+                return;
+            }
+
+            throw $exception;
         }
 
         $this->redirect('/product/index');
@@ -167,6 +224,15 @@ final class ProductController extends Controller
             'pageTitle' => 'Sản phẩm - Mini ERP',
             'products' => (new Product())->getAllWithCategory(),
         ]);
+    }
+
+    private function csvText(mixed $value): string
+    {
+        $text = (string) ($value ?? '');
+
+        return preg_match('/\A[\x00-\x20]*[=+\-@]/', $text) === 1
+            ? "'" . $text
+            : $text;
     }
 
     private function renderForm(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Models\ActivityLog;
 use App\Models\User;
 
 final class AuthController extends Controller
@@ -92,11 +93,16 @@ final class AuthController extends Controller
         $_SESSION['role_level'] = $roleLevel;
         unset($_SESSION['csrf_token'], $_SESSION['auth_error']);
 
+        (new ActivityLog())->log('auth.login', 'Đăng nhập hệ thống thành công.');
         $this->redirect('/dashboard/index');
     }
 
     public function logout(): void
     {
+        if (isset($_SESSION['user_id'])) {
+            (new ActivityLog())->log('auth.logout', 'Đăng xuất khỏi hệ thống.');
+        }
+
         $_SESSION = [];
 
         if (ini_get('session.use_cookies')) {

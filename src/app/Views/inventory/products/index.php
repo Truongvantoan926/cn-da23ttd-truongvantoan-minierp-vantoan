@@ -4,12 +4,18 @@
             <h1 class="h3 mb-1">Sản phẩm</h1>
             <p class="text-secondary mb-0">Quản lý thông tin và tồn kho sản phẩm</p>
         </div>
-        <?php if ($canManage): ?>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-success" href="<?= BASE_URL ?>/product/exportCsv">
+                <i class="fa-solid fa-file-csv me-2" aria-hidden="true"></i>
+                Xuất Excel/CSV
+            </a>
+            <?php if ($canManage): ?>
             <a class="btn btn-primary" href="<?= BASE_URL ?>/product/create">
                 <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
                 Thêm sản phẩm
             </a>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </div>
 
     <?php if (isset($error) && is_string($error) && $error !== ''): ?>
