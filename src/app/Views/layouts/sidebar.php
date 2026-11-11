@@ -23,6 +23,10 @@
                 <i class="fa-solid fa-box-open me-2" aria-hidden="true"></i>
                 Sản phẩm
             </a>
+            <a class="nav-link" href="<?= BASE_URL ?>/receipt/index">
+                <i class="fa-solid fa-arrow-right-arrow-left me-2" aria-hidden="true"></i>
+                Giao dịch kho
+            </a>
             <div class="mt-4 px-3 text-uppercase text-secondary small fw-semibold">Đối tác (CRM)</div>
             <a class="nav-link" href="<?= BASE_URL ?>/customer/index">
                 <i class="fa-solid fa-users me-2" aria-hidden="true"></i>
@@ -31,6 +35,11 @@
             <a class="nav-link" href="<?= BASE_URL ?>/supplier/index">
                 <i class="fa-solid fa-truck-field me-2" aria-hidden="true"></i>
                 Nhà cung cấp
+            </a>
+            <div class="mt-4 px-3 text-uppercase text-secondary small fw-semibold">Kế toán nội bộ</div>
+            <a class="nav-link" href="<?= BASE_URL ?>/finance/index">
+                <i class="fa-solid fa-money-bill-transfer me-2" aria-hidden="true"></i>
+                Sổ quỹ Thu/Chi
             </a>
         </nav>
     </aside>

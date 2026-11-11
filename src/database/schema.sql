@@ -361,6 +361,47 @@ CREATE TABLE IF NOT EXISTS customers (
         ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS inventory_receipts (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
+    type ENUM('IN', 'OUT') NOT NULL,
+    partner_id BIGINT UNSIGNED NULL,
+    employee_id BIGINT UNSIGNED NULL,
+    total_amount DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    note TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_inventory_receipts_code (code),
+    KEY idx_inventory_receipts_type_date (type, created_at),
+    KEY idx_inventory_receipts_partner (type, partner_id),
+    KEY idx_inventory_receipts_employee (employee_id),
+    CONSTRAINT fk_inventory_receipts_employee
+        FOREIGN KEY (employee_id) REFERENCES employees (id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT chk_inventory_receipts_total_amount CHECK (total_amount >= 0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS inventory_receipt_items (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    receipt_id BIGINT UNSIGNED NOT NULL,
+    product_id BIGINT UNSIGNED NOT NULL,
+    qty INT UNSIGNED NOT NULL,
+    price DECIMAL(15,2) NOT NULL,
+    total DECIMAL(15,2) NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_inventory_receipt_items_receipt (receipt_id),
+    KEY idx_inventory_receipt_items_product (product_id),
+    CONSTRAINT fk_inventory_receipt_items_receipt
+        FOREIGN KEY (receipt_id) REFERENCES inventory_receipts (id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_inventory_receipt_items_product
+        FOREIGN KEY (product_id) REFERENCES products (id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_inventory_receipt_items_values CHECK (
+        qty > 0 AND price >= 0 AND total >= 0
+    )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS customer_interactions (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     customer_id BIGINT UNSIGNED NOT NULL,
@@ -455,17 +496,19 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 CREATE TABLE IF NOT EXISTS transactions (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    code VARCHAR(20) NOT NULL,
     type ENUM('income', 'expense') NOT NULL,
     category VARCHAR(100) NOT NULL,
     amount DECIMAL(15,2) NOT NULL,
     ref_type VARCHAR(50) NULL,
     ref_id BIGINT UNSIGNED NULL,
-    method ENUM('cash', 'bank_transfer', 'card', 'other') NOT NULL DEFAULT 'cash',
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'Chuyển khoản',
     note TEXT NULL,
     created_by BIGINT UNSIGNED NULL,
     trans_date DATE NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
+    UNIQUE KEY uq_transactions_code (code),
     KEY idx_transactions_type_date (type, trans_date),
     KEY idx_transactions_category_date (category, trans_date),
     KEY idx_transactions_reference (ref_type, ref_id),

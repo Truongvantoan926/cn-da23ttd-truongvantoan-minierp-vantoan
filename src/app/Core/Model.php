@@ -34,6 +34,13 @@ abstract class Model
         return $statement->fetchAll();
     }
 
+    public function countAll(): int
+    {
+        return (int) $this->db->query(
+            'SELECT COUNT(*) FROM ' . $this->quotedTable()
+        )->fetchColumn();
+    }
+
     public function findById(int|string $id): ?array
     {
         $statement = $this->db->prepare(

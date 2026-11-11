@@ -6,6 +6,10 @@ namespace App\Controllers;
 
 use App\Core\AuthMiddleware;
 use App\Core\Controller;
+use App\Models\Employee;
+use App\Models\Product;
+use App\Models\Receipt;
+use App\Models\Transaction;
 
 final class DashboardController extends Controller
 {
@@ -21,7 +25,18 @@ final class DashboardController extends Controller
             $username = 'Người dùng';
         }
 
+        $employeeCount = (new Employee())->countAll();
+        $productCount = (new Product())->countAll();
+        $receiptModel = new Receipt();
+        $receiptCount = $receiptModel->countAll();
+        $financeSummary = (new Transaction())->getSummary();
+
         $this->render('dashboard/index', [
+            'employeeCount' => $employeeCount,
+            'productCount' => $productCount,
+            'receiptCount' => $receiptCount,
+            'financeSummary' => $financeSummary,
+            'recentReceipts' => $receiptModel->getRecent(),
             'username' => $username,
             'pageTitle' => 'Dashboard - Mini ERP',
         ]);
