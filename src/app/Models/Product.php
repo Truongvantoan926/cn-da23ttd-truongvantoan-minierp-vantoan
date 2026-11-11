@@ -21,4 +21,17 @@ final class Product extends Model
 
         return $statement->fetchAll();
     }
+
+    public function getLowStockProducts(): array
+    {
+        $statement = $this->db->query(
+            'SELECT products.*, categories.name AS category_name '
+            . 'FROM products '
+            . 'LEFT JOIN categories ON categories.id = products.category_id '
+            . 'WHERE products.stock_qty <= products.min_stock '
+            . 'ORDER BY products.stock_qty ASC, products.name ASC, products.id ASC'
+        );
+
+        return $statement->fetchAll();
+    }
 }

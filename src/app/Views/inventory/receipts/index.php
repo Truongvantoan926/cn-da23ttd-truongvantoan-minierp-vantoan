@@ -4,10 +4,12 @@
             <h1 class="h3 mb-1">Giao dịch kho</h1>
             <p class="text-secondary mb-0">Theo dõi phiếu nhập và phiếu xuất</p>
         </div>
-        <a class="btn btn-primary" href="<?= BASE_URL ?>/receipt/create">
-            <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
-            Tạo phiếu kho
-        </a>
+        <?php if ($canManage): ?>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>/receipt/create">
+                <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
+                Tạo phiếu kho
+            </a>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($error) && is_string($error) && $error !== ''): ?>

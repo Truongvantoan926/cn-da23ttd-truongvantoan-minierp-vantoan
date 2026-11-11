@@ -4,10 +4,12 @@
             <h1 class="h3 mb-1">Sản phẩm</h1>
             <p class="text-secondary mb-0">Quản lý thông tin và tồn kho sản phẩm</p>
         </div>
-        <a class="btn btn-primary" href="<?= BASE_URL ?>/product/create">
-            <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
-            Thêm sản phẩm
-        </a>
+        <?php if ($canManage): ?>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>/product/create">
+                <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
+                Thêm sản phẩm
+            </a>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($error) && is_string($error) && $error !== ''): ?>
@@ -29,19 +31,22 @@
                         <th scope="col" class="text-end">Giá bán</th>
                         <th scope="col" class="text-end">Tồn tối thiểu</th>
                         <th scope="col" class="text-end">Tồn thực tế</th>
-                        <th scope="col" class="text-end pe-4">Thao tác</th>
+                        <?php if ($canManage): ?>
+                            <th scope="col" class="text-end pe-4">Thao tác</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($products === []): ?>
                         <tr>
-                            <td colspan="9" class="text-center text-secondary py-5">
+                            <td colspan="<?= $canManage ? '9' : '8' ?>" class="text-center text-secondary py-5">
                                 Chưa có sản phẩm nào.
                             </td>
                         </tr>
                     <?php else: ?>
                         <?php foreach ($products as $product): ?>
-                            <tr>
+                            <?php $isLowStock = (float) $product['stock_qty'] <= (float) $product['min_stock']; ?>
+                            <tr class="<?= $isLowStock ? 'table-warning' : '' ?>">
                                 <td class="ps-4 fw-semibold">
                                     <?= htmlspecialchars((string) $product['sku'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>
@@ -58,8 +63,14 @@
                                     <?= number_format((float) $product['min_stock'], 3, ',', '.') ?>
                                 </td>
                                 <td class="text-end">
-                                    <?= number_format((float) $product['stock_qty'], 3, ',', '.') ?>
+                                    <span class="<?= $isLowStock ? 'badge text-bg-danger' : '' ?>">
+                                        <?= number_format((float) $product['stock_qty'], 3, ',', '.') ?>
+                                    </span>
+                                    <?php if ($isLowStock): ?>
+                                        <span class="badge text-bg-danger ms-1">Cần nhập thêm</span>
+                                    <?php endif; ?>
                                 </td>
+                                <?php if ($canManage): ?>
                                 <td class="text-end pe-4 text-nowrap">
                                     <a
                                         class="btn btn-sm btn-outline-primary me-1"
@@ -86,6 +97,7 @@
                                         </button>
                                     </form>
                                 </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

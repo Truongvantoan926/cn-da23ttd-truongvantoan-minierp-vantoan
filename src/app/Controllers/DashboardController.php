@@ -26,10 +26,14 @@ final class DashboardController extends Controller
         }
 
         $employeeCount = (new Employee())->countAll();
-        $productCount = (new Product())->countAll();
+        $productModel = new Product();
+        $productCount = $productModel->countAll();
         $receiptModel = new Receipt();
         $receiptCount = $receiptModel->countAll();
         $financeSummary = (new Transaction())->getSummary();
+        $lowStockProducts = $productModel->getLowStockProducts();
+        $flashError = $_SESSION['flash_error'] ?? null;
+        unset($_SESSION['flash_error']);
 
         $this->render('dashboard/index', [
             'employeeCount' => $employeeCount,
@@ -37,6 +41,8 @@ final class DashboardController extends Controller
             'receiptCount' => $receiptCount,
             'financeSummary' => $financeSummary,
             'recentReceipts' => $receiptModel->getRecent(),
+            'lowStockProducts' => $lowStockProducts,
+            'flashError' => is_string($flashError) ? $flashError : null,
             'username' => $username,
             'pageTitle' => 'Dashboard - Mini ERP',
         ]);

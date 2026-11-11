@@ -14,7 +14,7 @@ final class ProductController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
     }
 
     public function index(): void
@@ -24,11 +24,13 @@ final class ProductController extends Controller
 
     public function create(): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -65,6 +67,7 @@ final class ProductController extends Controller
 
     public function edit(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $product = (new Product())->findById($id);
         if ($product === null) {
             $this->showNotFound();
@@ -76,6 +79,7 @@ final class ProductController extends Controller
 
     public function update(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $model = new Product();
         $product = $model->findById($id);
         if ($product === null) {
@@ -124,6 +128,7 @@ final class ProductController extends Controller
 
     public function delete(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -154,6 +159,9 @@ final class ProductController extends Controller
     private function renderIndex(?string $error = null): void
     {
         $this->render('inventory/products/index', [
+            'canManage' => AuthMiddleware::hasRole(1)
+                || AuthMiddleware::hasRole(2)
+                || AuthMiddleware::hasRole(4),
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Sản phẩm - Mini ERP',

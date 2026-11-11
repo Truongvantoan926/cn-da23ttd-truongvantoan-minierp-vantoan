@@ -12,7 +12,7 @@ final class DepartmentController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 5]);
     }
 
     public function index(): void

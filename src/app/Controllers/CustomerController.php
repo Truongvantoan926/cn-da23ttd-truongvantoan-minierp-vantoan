@@ -15,7 +15,7 @@ final class CustomerController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
     }
 
     public function index(): void
@@ -25,11 +25,13 @@ final class CustomerController extends Controller
 
     public function create(): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -66,6 +68,7 @@ final class CustomerController extends Controller
 
     public function edit(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         $customer = (new Customer())->findById($id);
         if ($customer === null) {
             $this->showNotFound();
@@ -77,6 +80,7 @@ final class CustomerController extends Controller
 
     public function update(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         $model = new Customer();
         $customer = $model->findById($id);
         if ($customer === null) {
@@ -125,6 +129,7 @@ final class CustomerController extends Controller
 
     public function delete(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -155,6 +160,9 @@ final class CustomerController extends Controller
     private function renderIndex(?string $error = null): void
     {
         $this->render('crm/customers/index', [
+            'canManage' => AuthMiddleware::hasRole(1)
+                || AuthMiddleware::hasRole(2)
+                || AuthMiddleware::hasRole(6),
             'csrfToken' => $this->csrfToken(),
             'customers' => (new Customer())->findAll(),
             'error' => $error,

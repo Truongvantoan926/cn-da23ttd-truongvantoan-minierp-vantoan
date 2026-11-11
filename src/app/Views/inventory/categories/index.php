@@ -4,10 +4,12 @@
             <h1 class="h3 mb-1">Danh mục sản phẩm</h1>
             <p class="text-secondary mb-0">Quản lý các nhóm hàng trong kho</p>
         </div>
-        <a class="btn btn-primary" href="<?= BASE_URL ?>/category/create">
-            <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
-            Thêm danh mục
-        </a>
+        <?php if ($canManage): ?>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>/category/create">
+                <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
+                Thêm danh mục
+            </a>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($error) && is_string($error) && $error !== ''): ?>
@@ -24,13 +26,15 @@
                         <th scope="col" class="ps-4">#</th>
                         <th scope="col">Tên danh mục</th>
                         <th scope="col">Mô tả</th>
-                        <th scope="col" class="text-end pe-4">Thao tác</th>
+                        <?php if ($canManage): ?>
+                            <th scope="col" class="text-end pe-4">Thao tác</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($categories === []): ?>
                         <tr>
-                            <td colspan="4" class="text-center text-secondary py-5">
+                            <td colspan="<?= $canManage ? '4' : '3' ?>" class="text-center text-secondary py-5">
                                 Chưa có danh mục nào.
                             </td>
                         </tr>
@@ -46,6 +50,7 @@
                                 <td>
                                     <?= htmlspecialchars((string) ($category['description'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>
+                                <?php if ($canManage): ?>
                                 <td class="text-end pe-4 text-nowrap">
                                     <a
                                         class="btn btn-sm btn-outline-primary me-1"
@@ -72,6 +77,7 @@
                                         </button>
                                     </form>
                                 </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

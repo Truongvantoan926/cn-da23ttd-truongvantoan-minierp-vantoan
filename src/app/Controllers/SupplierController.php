@@ -13,7 +13,7 @@ final class SupplierController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
     }
 
     public function index(): void
@@ -23,11 +23,13 @@ final class SupplierController extends Controller
 
     public function create(): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -64,6 +66,7 @@ final class SupplierController extends Controller
 
     public function edit(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         $supplier = (new Supplier())->findById($id);
         if ($supplier === null) {
             $this->showNotFound();
@@ -75,6 +78,7 @@ final class SupplierController extends Controller
 
     public function update(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         $model = new Supplier();
         $supplier = $model->findById($id);
         if ($supplier === null) {
@@ -123,6 +127,7 @@ final class SupplierController extends Controller
 
     public function delete(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 6]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -153,6 +158,9 @@ final class SupplierController extends Controller
     private function renderIndex(?string $error = null): void
     {
         $this->render('crm/suppliers/index', [
+            'canManage' => AuthMiddleware::hasRole(1)
+                || AuthMiddleware::hasRole(2)
+                || AuthMiddleware::hasRole(6),
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Nhà cung cấp - Mini ERP',

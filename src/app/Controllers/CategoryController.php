@@ -12,7 +12,7 @@ final class CategoryController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 3, 4]);
     }
 
     public function index(): void
@@ -22,11 +22,13 @@ final class CategoryController extends Controller
 
     public function create(): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $this->renderForm('create', ['name' => '']);
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -57,6 +59,7 @@ final class CategoryController extends Controller
 
     public function edit(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $category = (new Category())->findById($id);
         if ($category === null) {
             $this->showNotFound();
@@ -68,6 +71,7 @@ final class CategoryController extends Controller
 
     public function update(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $model = new Category();
         $category = $model->findById($id);
         if ($category === null) {
@@ -106,6 +110,7 @@ final class CategoryController extends Controller
 
     public function delete(string $id): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -127,6 +132,9 @@ final class CategoryController extends Controller
     {
         $this->render('inventory/categories/index', [
             'categories' => (new Category())->findAll(),
+            'canManage' => AuthMiddleware::hasRole(1)
+                || AuthMiddleware::hasRole(2)
+                || AuthMiddleware::hasRole(4),
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Danh mục - Mini ERP',

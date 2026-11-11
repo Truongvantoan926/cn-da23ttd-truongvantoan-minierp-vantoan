@@ -16,7 +16,7 @@ final class FinanceController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 3]);
     }
 
     public function index(): void

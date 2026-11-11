@@ -24,7 +24,7 @@ final class ReceiptController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkRole([1, 2, 3, 4]);
     }
 
     public function index(): void
@@ -34,6 +34,7 @@ final class ReceiptController extends Controller
 
     public function create(): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         $suppliers = (new Supplier())->findAll();
         $customers = (new Customer())->findAll();
 
@@ -42,6 +43,7 @@ final class ReceiptController extends Controller
 
     public function store(): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -196,6 +198,9 @@ final class ReceiptController extends Controller
     private function renderIndex(?string $error = null): void
     {
         $this->render('inventory/receipts/index', [
+            'canManage' => AuthMiddleware::hasRole(1)
+                || AuthMiddleware::hasRole(2)
+                || AuthMiddleware::hasRole(4),
             'error' => $error,
             'pageTitle' => 'Giao dịch kho - Mini ERP',
             'receipts' => (new Receipt())->getAllWithDetails(),

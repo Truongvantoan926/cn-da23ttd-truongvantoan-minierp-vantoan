@@ -5,6 +5,11 @@
         </h1>
         <p class="text-secondary mb-0">Tổng quan hoạt động doanh nghiệp</p>
     </div>
+    <?php if (isset($flashError) && is_string($flashError) && $flashError !== ''): ?>
+        <div class="alert alert-danger" role="alert">
+            <?= htmlspecialchars($flashError, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+        </div>
+    <?php endif; ?>
 
     <div class="row g-4">
         <div class="col-12 col-sm-6 col-xl-3">
@@ -60,6 +65,20 @@
                     </div>
                     <span class="rounded-circle bg-info-subtle text-info p-3">
                         <i class="fa-solid fa-wallet fa-lg" aria-hidden="true"></i>
+                    </span>
+                </div>
+            </section>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <section class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="text-secondary mb-2">Cảnh báo tồn kho</p>
+                        <p class="h3 mb-0 text-danger"><?= number_format(count($lowStockProducts), 0, ',', '.') ?></p>
+                        <p class="small text-secondary mb-0">Sản phẩm cần nhập thêm</p>
+                    </div>
+                    <span class="rounded-circle bg-danger-subtle text-danger p-3">
+                        <i class="fa-solid fa-triangle-exclamation fa-lg" aria-hidden="true"></i>
                     </span>
                 </div>
             </section>
@@ -127,6 +146,54 @@
                     </div>
                 </div>
             </section>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <h2 class="h5 mb-1">Sản phẩm chạm ngưỡng tồn tối thiểu</h2>
+                    <p class="text-secondary small mb-0">Tồn thực tế nhỏ hơn hoặc bằng tồn tối thiểu</p>
+                </div>
+                <span class="badge text-bg-danger">Cần nhập thêm: <?= number_format(count($lowStockProducts), 0, ',', '.') ?></span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">SKU</th>
+                            <th scope="col">Sản phẩm</th>
+                            <th scope="col">Danh mục</th>
+                            <th scope="col" class="text-end">Tồn thực tế</th>
+                            <th scope="col" class="text-end">Tồn tối thiểu</th>
+                            <th scope="col" class="text-end">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($lowStockProducts === []): ?>
+                            <tr>
+                                <td colspan="6" class="text-center text-secondary py-4">
+                                    Không có sản phẩm nào cần nhập thêm.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($lowStockProducts as $product): ?>
+                                <tr class="table-warning">
+                                    <td class="fw-semibold">
+                                        <?= htmlspecialchars((string) $product['sku'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                                    </td>
+                                    <td><?= htmlspecialchars((string) $product['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                                    <td><?= htmlspecialchars((string) ($product['category_name'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                                    <td class="text-end"><?= number_format((float) $product['stock_qty'], 3, ',', '.') ?></td>
+                                    <td class="text-end"><?= number_format((float) $product['min_stock'], 3, ',', '.') ?></td>
+                                    <td class="text-end"><span class="badge text-bg-danger">Cần nhập thêm</span></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </main>

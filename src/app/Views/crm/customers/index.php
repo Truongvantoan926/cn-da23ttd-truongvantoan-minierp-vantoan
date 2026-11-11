@@ -4,10 +4,12 @@
             <h1 class="h3 mb-1">Khách hàng</h1>
             <p class="text-secondary mb-0">Quản lý thông tin và phân loại khách hàng</p>
         </div>
-        <a class="btn btn-primary" href="<?= BASE_URL ?>/customer/create">
-            <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
-            Thêm khách hàng
-        </a>
+        <?php if ($canManage): ?>
+            <a class="btn btn-primary" href="<?= BASE_URL ?>/customer/create">
+                <i class="fa-solid fa-plus me-2" aria-hidden="true"></i>
+                Thêm khách hàng
+            </a>
+        <?php endif; ?>
     </div>
 
     <?php if (isset($error) && is_string($error) && $error !== ''): ?>
@@ -28,13 +30,15 @@
                         <th scope="col">SĐT</th>
                         <th scope="col">Email</th>
                         <th scope="col">Phân loại</th>
-                        <th scope="col" class="text-end pe-4">Thao tác</th>
+                        <?php if ($canManage): ?>
+                            <th scope="col" class="text-end pe-4">Thao tác</th>
+                        <?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($customers === []): ?>
                         <tr>
-                            <td colspan="6" class="text-center text-secondary py-5">
+                            <td colspan="<?= $canManage ? '6' : '5' ?>" class="text-center text-secondary py-5">
                                 Chưa có khách hàng nào.
                             </td>
                         </tr>
@@ -56,6 +60,7 @@
                                         <?= htmlspecialchars($typeLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                     </span>
                                 </td>
+                                <?php if ($canManage): ?>
                                 <td class="text-end pe-4 text-nowrap">
                                     <a
                                         class="btn btn-sm btn-outline-primary me-1"
@@ -82,6 +87,7 @@
                                         </button>
                                     </form>
                                 </td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
