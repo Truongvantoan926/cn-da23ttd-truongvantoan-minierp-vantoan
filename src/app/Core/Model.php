@@ -121,6 +121,42 @@ abstract class Model
         return $statement->rowCount();
     }
 
+    protected function paginate(
+        string $selectSql,
+        string $countSql,
+        array $parameters,
+        int $page,
+        int $perPage
+    ): array {
+        if ($perPage < 1) {
+            throw new InvalidArgumentException('Số bản ghi mỗi trang phải lớn hơn 0.');
+        }
+
+        $countStatement = $this->db->prepare($countSql);
+        $this->execute($countStatement, $parameters);
+        $totalRecords = (int) $countStatement->fetchColumn();
+        $totalPages = (int) ceil($totalRecords / $perPage);
+        $currentPage = min(max(1, $page), max(1, $totalPages));
+        $offset = ($currentPage - 1) * $perPage;
+
+        $selectStatement = $this->db->prepare(
+            rtrim($selectSql) . ' LIMIT :pagination_limit OFFSET :pagination_offset'
+        );
+        $parameters[':pagination_limit'] = $perPage;
+        $parameters[':pagination_offset'] = $offset;
+        $this->execute($selectStatement, $parameters);
+
+        return [
+            'items' => $selectStatement->fetchAll(),
+            'pagination' => [
+                'current_page' => $currentPage,
+                'total_pages' => $totalPages,
+                'total_records' => $totalRecords,
+                'per_page' => $perPage,
+            ],
+        ];
+    }
+
     private function quotedTable(): string
     {
         return $this->quoteIdentifier($this->table);

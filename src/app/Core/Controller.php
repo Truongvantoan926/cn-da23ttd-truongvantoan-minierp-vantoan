@@ -9,6 +9,8 @@ use RuntimeException;
 
 abstract class Controller
 {
+    protected const ITEMS_PER_PAGE = 10;
+
     public function render(string $view, array $data = []): void
     {
         if (!preg_match('/\A[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*\z/', $view)) {
@@ -20,6 +22,9 @@ abstract class Controller
             . DIRECTORY_SEPARATOR
             . str_replace('/', DIRECTORY_SEPARATOR, $view)
             . '.php';
+        $paginationViewPath = $viewsDirectory
+            . DIRECTORY_SEPARATOR . 'layouts'
+            . DIRECTORY_SEPARATOR . 'pagination.php';
 
         if (!is_file($viewPath)) {
             throw new RuntimeException('Không tìm thấy view được yêu cầu.');
@@ -46,6 +51,17 @@ abstract class Controller
         if (is_file($footerPath)) {
             require $footerPath;
         }
+    }
+
+    protected function requestedPage(): int
+    {
+        $page = filter_var(
+            $_GET['page'] ?? 1,
+            FILTER_VALIDATE_INT,
+            ['options' => ['min_range' => 1]]
+        );
+
+        return $page === false ? 1 : $page;
     }
 
     public function redirect(string $url): void

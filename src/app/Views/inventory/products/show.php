@@ -43,10 +43,7 @@ $statusClasses = [
 ?>
 <main class="container-fluid flex-grow-1 p-4 p-lg-5">
     <div class="mb-4">
-        <a class="text-decoration-none" href="<?= BASE_URL ?>/product/index">
-            <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>
-            Danh sách sản phẩm
-        </a>
+        <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>/product/index">Quay lại danh sách</a>
         <h1 class="h3 mt-3 mb-1">
             <?= htmlspecialchars((string) $product['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
         </h1>
@@ -63,7 +60,7 @@ $statusClasses = [
                     style="width: 100%; height: 400px; object-fit: contain; background-color: #f8f9fa; transition: opacity .2s ease;"
                 >
                 <div class="card-body">
-                    <div class="d-flex gap-2" role="group" aria-label="Chọn ảnh sản phẩm">
+                    <div class="d-flex flex-wrap gap-2" role="group" aria-label="Chọn ảnh sản phẩm">
                         <?php foreach ($galleryImages as $index => $image): ?>
                             <button
                                 class="btn btn-light border p-1"
@@ -175,6 +172,7 @@ $statusClasses = [
             </div>
         </section>
     </div>
+<?php require $paginationViewPath; ?>
 </main>
 
 <script>

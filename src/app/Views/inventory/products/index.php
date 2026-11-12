@@ -4,7 +4,7 @@
             <h1 class="h3 mb-1">Sản phẩm</h1>
             <p class="text-secondary mb-0">Quản lý thông tin và tồn kho sản phẩm</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-outline-success" href="<?= BASE_URL ?>/product/exportCsv">
                 <i class="fa-solid fa-file-csv me-2" aria-hidden="true"></i>
                 Xuất Excel/CSV
@@ -55,15 +55,14 @@
                         <th scope="col">ĐVT</th>
                         <th scope="col" class="text-end">Giá vốn</th>
                         <th scope="col" class="text-end">Giá bán</th>
-                        <th scope="col" class="text-end">Tồn tối thiểu</th>
-                        <th scope="col" class="text-end">Tồn thực tế</th>
+                        <th scope="col" class="text-end">Tổng kho</th>
                         <th scope="col" class="text-end pe-4">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($products === []): ?>
                         <tr>
-                            <td colspan="9" class="text-center text-secondary py-5">
+                            <td colspan="8" class="text-center text-secondary py-5">
                                 <?= $search === '' ? 'Chưa có sản phẩm nào.' : 'Không tìm thấy sản phẩm phù hợp.' ?>
                             </td>
                         </tr>
@@ -84,12 +83,7 @@
                                     <?= \App\Core\CurrencyFormatter::format($product['sale_price']) ?>&nbsp;₫
                                 </td>
                                 <td class="text-end">
-                                    <?= number_format((float) $product['min_stock'], 3, ',', '.') ?>
-                                </td>
-                                <td class="text-end">
-                                    <span class="<?= $isLowStock ? 'badge text-bg-danger' : '' ?>">
-                                        <?= number_format((float) $product['stock_qty'], 3, ',', '.') ?>
-                                    </span>
+                                    <?= (int) $product['stock_qty'] ?>
                                     <?php if ($isLowStock): ?>
                                         <span class="badge text-bg-danger ms-1">Cần nhập thêm</span>
                                     <?php endif; ?>
@@ -137,4 +131,5 @@
             </table>
         </div>
     </div>
+<?php require $paginationViewPath; ?>
 </main>

@@ -2,7 +2,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h1 class="h3 mb-1">Nhật ký hệ thống</h1>
-            <p class="text-secondary mb-0">50 hoạt động mới nhất được ghi nhận trong hệ thống</p>
+            <p class="text-secondary mb-0">Theo dõi nhật ký hoạt động trong hệ thống</p>
         </div>
     </div>
 
@@ -15,13 +15,12 @@
                         <th scope="col">Người thực hiện</th>
                         <th scope="col">Hành động</th>
                         <th scope="col">Mô tả chi tiết</th>
-                        <th scope="col" class="pe-4">Địa chỉ IP</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($logs === []): ?>
                         <tr>
-                            <td colspan="5" class="text-center text-secondary py-5">
+                            <td colspan="4" class="text-center text-secondary py-5">
                                 Chưa có hoạt động nào được ghi nhận.
                             </td>
                         </tr>
@@ -42,9 +41,6 @@
                                 <td class="text-break">
                                     <?= htmlspecialchars((string) $log['description'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>
-                                <td class="pe-4 text-nowrap">
-                                    <?= htmlspecialchars((string) ($log['ip_address'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -52,4 +48,5 @@
             </table>
         </div>
     </div>
+<?php require $paginationViewPath; ?>
 </main>

@@ -23,14 +23,14 @@ final class ProductController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
+        AuthMiddleware::checkPermission('inventory.view');
     }
 
     public function index(): void
     {
         $search = $_GET['search'] ?? '';
         $search = is_string($search) ? trim($search) : '';
-        $this->renderIndex(null, $search);
+        $this->renderIndex(null, $search, $this->requestedPage());
     }
 
     public function show(string $id): void
@@ -41,17 +41,23 @@ final class ProductController extends Controller
             return;
         }
 
+        $serialResult = (new ProductSerial())->getPaginatedByProductId(
+            $id,
+            $this->requestedPage(),
+            self::ITEMS_PER_PAGE
+        );
         $this->render('inventory/products/show', [
             'images' => (new ProductImage())->getImagesByProductId($id),
             'pageTitle' => (string) $product['name'] . ' - Mini ERP',
+            'pagination' => $serialResult['pagination'],
             'product' => $product,
-            'serials' => (new ProductSerial())->getByProductId($id),
+            'serials' => $serialResult['items'],
         ]);
     }
 
     public function exportCsv(): void
     {
-        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
+        AuthMiddleware::checkPermission('inventory.view');
 
         $products = (new Product())->getAllWithCategory();
         $output = fopen('php://output', 'wb');
@@ -83,13 +89,13 @@ final class ProductController extends Controller
 
     public function create(): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_products');
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_products');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -147,7 +153,7 @@ final class ProductController extends Controller
 
     public function edit(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_products');
         $product = (new Product())->findById($id);
         if ($product === null) {
             $this->showNotFound();
@@ -160,7 +166,7 @@ final class ProductController extends Controller
 
     public function update(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_products');
         $model = new Product();
         $product = $model->findById($id);
         if ($product === null) {
@@ -239,7 +245,7 @@ final class ProductController extends Controller
 
     public function delete(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_products');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -269,7 +275,7 @@ final class ProductController extends Controller
 
     public function deleteImage(string $imageId): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_products');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -333,9 +339,9 @@ final class ProductController extends Controller
         $this->redirect('/product/edit/' . rawurlencode($productId));
     }
 
-    private function renderIndex(?string $error = null, string $search = ''): void
+    private function renderIndex(?string $error = null, string $search = '', int $page = 1): void
     {
-        $productModel = new Product();
+        $result = (new Product())->getPaginatedWithCategory($search, $page, self::ITEMS_PER_PAGE);
         $this->render('inventory/products/index', [
             'canManage' => AuthMiddleware::hasRole(1)
                 || AuthMiddleware::hasRole(2)
@@ -343,7 +349,8 @@ final class ProductController extends Controller
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Sản phẩm - Mini ERP',
-            'products' => $search === '' ? $productModel->getAllWithCategory() : $productModel->search($search),
+            'pagination' => $result['pagination'],
+            'products' => $result['items'],
             'search' => $search,
         ]);
     }

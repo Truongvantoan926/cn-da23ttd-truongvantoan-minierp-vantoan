@@ -13,23 +13,23 @@ final class SupplierController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
+        AuthMiddleware::checkPermission('crm.view');
     }
 
     public function index(): void
     {
-        $this->renderIndex();
+        $this->renderIndex(null, $this->requestedPage());
     }
 
     public function create(): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_suppliers');
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_suppliers');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -66,7 +66,7 @@ final class SupplierController extends Controller
 
     public function edit(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_suppliers');
         $supplier = (new Supplier())->findById($id);
         if ($supplier === null) {
             $this->showNotFound();
@@ -78,7 +78,7 @@ final class SupplierController extends Controller
 
     public function update(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_suppliers');
         $model = new Supplier();
         $supplier = $model->findById($id);
         if ($supplier === null) {
@@ -127,7 +127,7 @@ final class SupplierController extends Controller
 
     public function delete(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_suppliers');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -155,8 +155,9 @@ final class SupplierController extends Controller
         $this->redirect('/supplier/index');
     }
 
-    private function renderIndex(?string $error = null): void
+    private function renderIndex(?string $error = null, int $page = 1): void
     {
+        $result = (new Supplier())->getPaginated($page, self::ITEMS_PER_PAGE);
         $this->render('crm/suppliers/index', [
             'canManage' => AuthMiddleware::hasRole(1)
                 || AuthMiddleware::hasRole(2)
@@ -164,7 +165,8 @@ final class SupplierController extends Controller
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Nhà cung cấp - Mini ERP',
-            'suppliers' => (new Supplier())->findAll(),
+            'suppliers' => $result['items'],
+            'pagination' => $result['pagination'],
         ]);
     }
 

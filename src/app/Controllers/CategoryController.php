@@ -13,14 +13,14 @@ final class CategoryController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 3, 4]);
+        AuthMiddleware::checkPermission('inventory.view');
     }
 
     public function index(): void
     {
         $search = $_GET['search'] ?? '';
         $search = is_string($search) ? trim($search) : '';
-        $this->renderIndex(null, $search);
+        $this->renderIndex(null, $search, $this->requestedPage());
     }
 
     public function show(string $id): void
@@ -31,22 +31,28 @@ final class CategoryController extends Controller
             return;
         }
 
+        $result = (new Product())->getPaginatedByCategoryId(
+            $id,
+            $this->requestedPage(),
+            self::ITEMS_PER_PAGE
+        );
         $this->render('inventory/categories/show', [
             'category' => $category,
             'pageTitle' => 'Sản phẩm thuộc danh mục ' . (string) $category['name'] . ' - Mini ERP',
-            'products' => (new Product())->getByCategoryId($id),
+            'pagination' => $result['pagination'],
+            'products' => $result['items'],
         ]);
     }
 
     public function create(): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_categories');
         $this->renderForm('create', ['name' => '']);
     }
 
     public function store(): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_categories');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -77,7 +83,7 @@ final class CategoryController extends Controller
 
     public function edit(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_categories');
         $category = (new Category())->findById($id);
         if ($category === null) {
             $this->showNotFound();
@@ -89,7 +95,7 @@ final class CategoryController extends Controller
 
     public function update(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_categories');
         $model = new Category();
         $category = $model->findById($id);
         if ($category === null) {
@@ -128,7 +134,7 @@ final class CategoryController extends Controller
 
     public function delete(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 4]);
+        AuthMiddleware::checkPermission('inventory.manage_categories');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -146,17 +152,18 @@ final class CategoryController extends Controller
         $this->redirect('/category/index');
     }
 
-    private function renderIndex(?string $error = null, string $search = ''): void
+    private function renderIndex(?string $error = null, string $search = '', int $page = 1): void
     {
-        $categoryModel = new Category();
+        $result = (new Category())->getPaginated($search, $page, self::ITEMS_PER_PAGE);
         $this->render('inventory/categories/index', [
-            'categories' => $search === '' ? $categoryModel->findAll() : $categoryModel->search($search),
+            'categories' => $result['items'],
             'canManage' => AuthMiddleware::hasRole(1)
                 || AuthMiddleware::hasRole(2)
                 || AuthMiddleware::hasRole(4),
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Danh mục - Mini ERP',
+            'pagination' => $result['pagination'],
             'search' => $search,
         ]);
     }

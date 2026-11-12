@@ -40,6 +40,31 @@ final class Product extends Model
         return $statement->fetchAll();
     }
 
+    public function getPaginatedWithCategory(string $keyword, int $page, int $perPage): array
+    {
+        $where = $keyword === ''
+            ? ''
+            : ' WHERE products.name LIKE :name_keyword OR products.sku LIKE :sku_keyword';
+        $parameters = $keyword === ''
+            ? []
+            : [
+                ':name_keyword' => '%' . $keyword . '%',
+                ':sku_keyword' => '%' . $keyword . '%',
+            ];
+        $from = ' FROM products '
+            . 'LEFT JOIN categories ON categories.id = products.category_id';
+
+        return $this->paginate(
+            'SELECT products.*, categories.name AS category_name'
+                . $from . $where
+                . ' ORDER BY products.name ASC, products.id ASC',
+            'SELECT COUNT(*)' . $from . $where,
+            $parameters,
+            $page,
+            $perPage
+        );
+    }
+
     public function findByIdWithCategory(int|string $id): ?array
     {
         $statement = $this->db->prepare(
@@ -65,6 +90,22 @@ final class Product extends Model
         $statement->execute(['category_id' => $categoryId]);
 
         return $statement->fetchAll();
+    }
+
+    public function getPaginatedByCategoryId(
+        int|string $categoryId,
+        int $page,
+        int $perPage
+    ): array {
+        return $this->paginate(
+            'SELECT * FROM products '
+                . 'WHERE category_id = :category_id '
+                . 'ORDER BY name ASC, id ASC',
+            'SELECT COUNT(*) FROM products WHERE category_id = :category_id',
+            [':category_id' => $categoryId],
+            $page,
+            $perPage
+        );
     }
 
     public function getLowStockProducts(): array

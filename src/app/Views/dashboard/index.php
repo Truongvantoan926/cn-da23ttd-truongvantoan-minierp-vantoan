@@ -12,6 +12,7 @@
     <?php endif; ?>
 
     <div class="row g-4">
+        <?php if ($canViewHr): ?>
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center justify-content-between p-3">
@@ -28,7 +29,9 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
 
+        <?php if ($canViewInventory): ?>
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center justify-content-between p-3">
@@ -45,7 +48,9 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
 
+        <?php if ($canViewInventory): ?>
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center justify-content-between p-3">
@@ -62,7 +67,9 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
 
+        <?php if ($canViewFinance): ?>
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center justify-content-between p-3">
@@ -81,6 +88,9 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
+
+        <?php if ($canViewInventory): ?>
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
                 <div class="card-body d-flex align-items-center justify-content-between p-3">
@@ -98,9 +108,11 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
     </div>
 
     <div class="row g-4 mt-1">
+        <?php if ($canViewFinance): ?>
         <div class="col-12 col-xl-6">
             <section class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
@@ -112,7 +124,9 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
 
+        <?php if ($canViewInventory): ?>
         <div class="col-12 col-xl-6">
             <section class="card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
@@ -162,8 +176,10 @@
                 </div>
             </section>
         </div>
+        <?php endif; ?>
     </div>
 
+    <?php if ($canViewInventory): ?>
     <div class="card border-0 shadow-sm mt-4">
         <div class="card-body p-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -211,8 +227,10 @@
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </main>
 
+<?php if ($canViewFinance): ?>
 <script>
 (() => {
     const canvas = document.getElementById('finance-summary-chart');
@@ -264,3 +282,4 @@
     });
 })();
 </script>
+<?php endif; ?>

@@ -1,9 +1,6 @@
 <main class="container-fluid flex-grow-1 p-4 p-lg-5">
     <div class="mb-4">
-        <a class="text-decoration-none" href="<?= BASE_URL ?>/category/index">
-            <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>
-            Danh sách danh mục
-        </a>
+        <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>/category/index">Quay lại danh sách</a>
         <h1 class="h3 mt-3 mb-1">
             Sản phẩm thuộc danh mục
             <?= htmlspecialchars((string) $category['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
@@ -50,4 +47,5 @@
             </table>
         </div>
     </section>
+<?php require $paginationViewPath; ?>
 </main>

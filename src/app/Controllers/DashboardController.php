@@ -15,7 +15,7 @@ final class DashboardController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::check();
+        AuthMiddleware::checkPermission('dashboard.view');
     }
 
     public function index(): void
@@ -25,22 +25,35 @@ final class DashboardController extends Controller
             $username = 'Người dùng';
         }
 
-        $employeeCount = (new Employee())->countAll();
-        $productModel = new Product();
-        $productCount = $productModel->countAll();
-        $receiptModel = new Receipt();
-        $receiptCount = $receiptModel->countAll();
-        $financeSummary = (new Transaction())->getSummary();
-        $lowStockProducts = $productModel->getLowStockProducts();
+        $canViewHr = AuthMiddleware::hasPermission('hr.view');
+        $canViewInventory = AuthMiddleware::hasPermission('inventory.view');
+        $canViewFinance = AuthMiddleware::hasPermission('finance.view');
+        $employeeCount = $canViewHr ? (new Employee())->countAll() : 0;
+        $productCount = 0;
+        $receiptCount = 0;
+        $recentReceipts = [];
+        $lowStockProducts = [];
+        if ($canViewInventory) {
+            $productModel = new Product();
+            $receiptModel = new Receipt();
+            $productCount = $productModel->countAll();
+            $receiptCount = $receiptModel->countAll();
+            $recentReceipts = $receiptModel->getRecent();
+            $lowStockProducts = $productModel->getLowStockProducts();
+        }
+        $financeSummary = $canViewFinance ? (new Transaction())->getSummary() : null;
         $flashError = $_SESSION['flash_error'] ?? null;
         unset($_SESSION['flash_error']);
 
         $this->render('dashboard/index', [
+            'canViewFinance' => $canViewFinance,
+            'canViewHr' => $canViewHr,
+            'canViewInventory' => $canViewInventory,
             'employeeCount' => $employeeCount,
             'productCount' => $productCount,
             'receiptCount' => $receiptCount,
             'financeSummary' => $financeSummary,
-            'recentReceipts' => $receiptModel->getRecent(),
+            'recentReceipts' => $recentReceipts,
             'lowStockProducts' => $lowStockProducts,
             'flashError' => is_string($flashError) ? $flashError : null,
             'username' => $username,

@@ -1,10 +1,7 @@
 <main class="container flex-grow-1 py-4 py-lg-5">
     <div class="mx-auto" style="max-width: 900px;">
         <div class="mb-4">
-            <a class="text-decoration-none" href="<?= BASE_URL ?>/employee/index">
-                <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>
-                Danh sách nhân viên
-            </a>
+            <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>/employee/index">Quay lại danh sách</a>
             <h1 class="h3 mt-3 mb-1">Thêm nhân viên</h1>
             <p class="text-secondary mb-0">Nhập thông tin hồ sơ nhân viên.</p>
         </div>

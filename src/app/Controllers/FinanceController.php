@@ -16,22 +16,24 @@ final class FinanceController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 3]);
+        AuthMiddleware::checkPermission('finance.view');
     }
 
     public function index(): void
     {
         $model = new Transaction();
+        $result = $model->getPaginatedWithUser($this->requestedPage(), self::ITEMS_PER_PAGE);
         $this->render('finance/index', [
             'pageTitle' => 'Sổ quỹ Thu/Chi - Mini ERP',
+            'pagination' => $result['pagination'],
             'summary' => $model->getSummary(),
-            'transactions' => $model->getAllWithUser(),
+            'transactions' => $result['items'],
         ]);
     }
 
     public function exportCsv(): void
     {
-        AuthMiddleware::checkRole([1, 2, 3]);
+        AuthMiddleware::checkPermission('finance.view');
 
         $transactions = (new Transaction())->getAllWithUser();
         $output = fopen('php://output', 'wb');
@@ -70,11 +72,13 @@ final class FinanceController extends Controller
 
     public function create(): void
     {
+        AuthMiddleware::checkPermission('finance.manage');
         $this->renderForm($this->emptyValues());
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkPermission('finance.manage');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');

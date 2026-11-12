@@ -21,4 +21,18 @@ final class Category extends Model
 
         return $statement->fetchAll();
     }
+
+    public function getPaginated(string $keyword, int $page, int $perPage): array
+    {
+        $where = $keyword === '' ? '' : ' WHERE name LIKE :keyword';
+        $parameters = $keyword === '' ? [] : [':keyword' => '%' . $keyword . '%'];
+
+        return $this->paginate(
+            'SELECT * FROM categories' . $where . ' ORDER BY name ASC, id ASC',
+            'SELECT COUNT(*) FROM categories' . $where,
+            $parameters,
+            $page,
+            $perPage
+        );
+    }
 }

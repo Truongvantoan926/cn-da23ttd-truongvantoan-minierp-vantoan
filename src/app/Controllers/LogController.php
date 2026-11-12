@@ -12,13 +12,15 @@ final class LogController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2]);
+        AuthMiddleware::checkPermission('audit.view');
     }
 
     public function index(): void
     {
+        $result = (new ActivityLog())->getPaginated($this->requestedPage(), self::ITEMS_PER_PAGE);
         $this->render('logs/index', [
-            'logs' => (new ActivityLog())->getRecent(50),
+            'logs' => $result['items'],
+            'pagination' => $result['pagination'],
             'pageTitle' => 'Nhật ký hệ thống - Mini ERP',
         ]);
     }

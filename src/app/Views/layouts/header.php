@@ -10,16 +10,47 @@ $pageTitle = isset($pageTitle) && is_string($pageTitle) ? $pageTitle : 'Mini ERP
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <style>
+        main {
+            min-width: 0;
+        }
+
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+    </style>
 </head>
 <body class="min-vh-100 d-flex flex-column bg-light">
 <header class="navbar navbar-dark bg-primary shadow-sm">
-    <div class="container-fluid">
+    <div class="container-fluid gap-2">
+        <?php if (isset($_SESSION['user_id'])): ?>
+            <button
+                class="btn btn-outline-light btn-sm d-md-none"
+                type="button"
+                data-bs-toggle="offcanvas"
+                data-bs-target="#mainSidebar"
+                aria-controls="mainSidebar"
+                aria-label="Mở menu điều hướng"
+            >
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            </button>
+        <?php endif; ?>
         <a class="navbar-brand fw-semibold" href="<?= BASE_URL ?>/dashboard/index">Mini ERP</a>
         <?php if (isset($_SESSION['user_id'])): ?>
-            <div class="d-flex align-items-center gap-3">
-                <a class="btn btn-outline-light btn-sm" href="<?= BASE_URL ?>/profile/index">
+            <div class="d-flex align-items-center gap-2">
+                <a
+                    class="btn btn-outline-light btn-sm"
+                    href="<?= BASE_URL ?>/profile/index"
+                    aria-label="Hồ sơ cá nhân"
+                >
                     <i class="fa-solid fa-user me-1" aria-hidden="true"></i>
-                    Hồ sơ cá nhân
+                    <span class="d-none d-sm-inline">Hồ sơ cá nhân</span>
+                </a>
+                <a
+                    class="btn btn-outline-light btn-sm ms-2"
+                    href="<?= BASE_URL ?>/auth/logout"
+                >
+                    Đăng xuất
                 </a>
             </div>
         <?php endif; ?>

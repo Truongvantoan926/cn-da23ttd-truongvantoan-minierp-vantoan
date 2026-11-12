@@ -40,4 +40,22 @@ final class Transaction extends Model
 
         return $statement->fetchAll();
     }
+
+    public function getPaginatedWithUser(int $page, int $perPage): array
+    {
+        $from = ' FROM transactions '
+            . 'LEFT JOIN users ON users.id = transactions.created_by '
+            . 'LEFT JOIN employees ON employees.id = users.employee_id';
+
+        return $this->paginate(
+            'SELECT transactions.*, '
+                . 'COALESCE(NULLIF(employees.full_name, \'\'), users.username) AS created_by_name'
+                . $from
+                . ' ORDER BY transactions.trans_date DESC, transactions.id DESC',
+            'SELECT COUNT(*)' . $from,
+            [],
+            $page,
+            $perPage
+        );
+    }
 }

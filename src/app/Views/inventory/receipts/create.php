@@ -1,10 +1,7 @@
 <main class="container flex-grow-1 py-4 py-lg-5">
     <div class="mx-auto" style="max-width: 1000px;">
         <div class="mb-4">
-            <a class="text-decoration-none" href="<?= BASE_URL ?>/receipt/index">
-                <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>
-                Danh sách giao dịch kho
-            </a>
+            <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>/receipt/index">Quay lại danh sách</a>
             <h1 class="h3 mt-3 mb-1">Tạo phiếu nhập / xuất kho</h1>
             <p class="text-secondary mb-0">Tồn kho được cập nhật tự động sau khi lưu phiếu.</p>
         </div>
@@ -174,7 +171,25 @@
                                     <?php endforeach; ?>
                                 </select>
                                 <div class="form-text" id="serial-help-<?= (int) $index ?>">
-                                    Với sản phẩm có quản lý Serial/IMEI, hãy chọn đúng số lượng serial cần xuất.
+                                    Có thể chọn trước Serial/IMEI; hệ thống sẽ tự bổ sung số còn thiếu theo số lượng xuất.
+                                </div>
+                            </div>
+                            <div class="col-12" data-incoming-serial-field hidden>
+                                <label class="form-label" for="serial-numbers-<?= (int) $index ?>">
+                                    Serial/IMEI nhập kho
+                                </label>
+                                <textarea
+                                    class="form-control"
+                                    id="serial-numbers-<?= (int) $index ?>"
+                                    name="items[<?= (int) $index ?>][serial_numbers_text]"
+                                    rows="4"
+                                    maxlength="100000"
+                                    data-incoming-serial-text
+                                    aria-describedby="incoming-serial-help-<?= (int) $index ?>"
+                                    disabled
+                                ><?= htmlspecialchars($item['serial_text'] ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
+                                <div class="form-text" id="incoming-serial-help-<?= (int) $index ?>">
+                                    Nhập mỗi mã trên một dòng. Với sản phẩm đã quản lý Serial/IMEI, số mã phải khớp số lượng nhập.
                                 </div>
                             </div>
                         </div>
@@ -260,7 +275,25 @@
                                 <?php endforeach; ?>
                             </select>
                             <div class="form-text">
-                                Với sản phẩm có quản lý Serial/IMEI, hãy chọn đúng số lượng serial cần xuất.
+                                Có thể chọn trước Serial/IMEI; hệ thống sẽ tự bổ sung số còn thiếu theo số lượng xuất.
+                            </div>
+                        </div>
+                        <div class="col-12" data-incoming-serial-field hidden>
+                            <label class="form-label" for="serial-numbers-__INDEX__">
+                                Serial/IMEI nhập kho
+                            </label>
+                            <textarea
+                                class="form-control"
+                                id="serial-numbers-__INDEX__"
+                                name="items[__INDEX__][serial_numbers_text]"
+                                rows="4"
+                                maxlength="100000"
+                                data-incoming-serial-text
+                                aria-label="Nhập Serial/IMEI, mỗi mã trên một dòng"
+                                disabled
+                            ></textarea>
+                            <div class="form-text">
+                                Nhập mỗi mã trên một dòng. Với sản phẩm đã quản lý Serial/IMEI, số mã phải khớp số lượng nhập.
                             </div>
                         </div>
                     </div>
@@ -334,11 +367,16 @@
         const productSelect = row.querySelector('[data-product-select]');
         const serialField = row.querySelector('[data-serial-field]');
         const serialSelect = row.querySelector('[data-serial-select]');
+        const incomingSerialField = row.querySelector('[data-incoming-serial-field]');
+        const incomingSerialText = row.querySelector('[data-incoming-serial-text]');
         const productId = productSelect.value;
         const visible = typeSelect.value === 'OUT' && serialTrackedProducts.has(productId);
+        const incoming = typeSelect.value === 'IN';
 
         serialField.hidden = !visible;
         serialSelect.disabled = !visible;
+        incomingSerialField.hidden = !incoming;
+        incomingSerialText.disabled = !incoming;
         Array.from(serialSelect.options).forEach((option) => {
             const matchesProduct = option.dataset.productId === productId;
             option.hidden = !matchesProduct;
@@ -404,9 +442,9 @@
 
             const quantity = Number(row.querySelector('[name$=\"[qty]\"]').value);
             const selectedCount = row.querySelector('[data-serial-select]').selectedOptions.length;
-            if (selectedCount !== quantity) {
+            if (selectedCount > quantity) {
                 event.preventDefault();
-                window.alert('Hãy chọn đúng số lượng Serial/IMEI cho từng sản phẩm.');
+                window.alert('Không thể chọn nhiều Serial/IMEI hơn số lượng xuất.');
                 return;
             }
         }

@@ -15,6 +15,12 @@
                 </div>
             <?php endif; ?>
 
+            <?php if (isset($success) && is_string($success) && $success !== ''): ?>
+                <div class="alert alert-success" role="status">
+                    <?= htmlspecialchars($success, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+                </div>
+            <?php endif; ?>
+
             <form action="<?= BASE_URL ?>/auth/login" method="POST">
                 <input
                     type="hidden"
@@ -53,6 +59,10 @@
                     Đăng nhập
                 </button>
             </form>
+
+            <a class="btn btn-outline-secondary w-100 mt-3" href="<?= BASE_URL ?>/auth/register">
+                Tạo tài khoản mới
+            </a>
         </div>
     </div>
 </main>

@@ -15,23 +15,23 @@ final class CustomerController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
+        AuthMiddleware::checkPermission('crm.view');
     }
 
     public function index(): void
     {
-        $this->renderIndex();
+        $this->renderIndex(null, $this->requestedPage());
     }
 
     public function create(): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_customers');
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_customers');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -68,7 +68,7 @@ final class CustomerController extends Controller
 
     public function edit(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_customers');
         $customer = (new Customer())->findById($id);
         if ($customer === null) {
             $this->showNotFound();
@@ -80,7 +80,7 @@ final class CustomerController extends Controller
 
     public function update(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_customers');
         $model = new Customer();
         $customer = $model->findById($id);
         if ($customer === null) {
@@ -129,7 +129,7 @@ final class CustomerController extends Controller
 
     public function delete(string $id): void
     {
-        AuthMiddleware::checkRole([1, 2, 6]);
+        AuthMiddleware::checkPermission('crm.manage_customers');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -157,16 +157,18 @@ final class CustomerController extends Controller
         $this->redirect('/customer/index');
     }
 
-    private function renderIndex(?string $error = null): void
+    private function renderIndex(?string $error = null, int $page = 1): void
     {
+        $result = (new Customer())->getPaginated($page, self::ITEMS_PER_PAGE);
         $this->render('crm/customers/index', [
             'canManage' => AuthMiddleware::hasRole(1)
                 || AuthMiddleware::hasRole(2)
                 || AuthMiddleware::hasRole(6),
             'csrfToken' => $this->csrfToken(),
-            'customers' => (new Customer())->findAll(),
+            'customers' => $result['items'],
             'error' => $error,
             'pageTitle' => 'Khách hàng - Mini ERP',
+            'pagination' => $result['pagination'],
         ]);
     }
 

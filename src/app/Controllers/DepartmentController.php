@@ -13,12 +13,12 @@ final class DepartmentController extends Controller
 {
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 5]);
+        AuthMiddleware::checkPermission('hr.view');
     }
 
     public function index(): void
     {
-        $this->renderIndex();
+        $this->renderIndex(null, $this->requestedPage());
     }
 
     public function show(string $id): void
@@ -29,20 +29,28 @@ final class DepartmentController extends Controller
             return;
         }
 
+        $result = (new Employee())->getPaginatedByDepartmentIdWithRole(
+            $id,
+            $this->requestedPage(),
+            self::ITEMS_PER_PAGE
+        );
         $this->render('hr/departments/show', [
             'department' => $department,
-            'employees' => (new Employee())->getByDepartmentIdWithRole($id),
+            'employees' => $result['items'],
             'pageTitle' => (string) $department['name'] . ' - Mini ERP',
+            'pagination' => $result['pagination'],
         ]);
     }
 
     public function create(): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         $this->renderForm('create', ['code' => '', 'name' => '']);
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -69,6 +77,7 @@ final class DepartmentController extends Controller
 
     public function edit(string $id): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         $department = (new Department())->findById($id);
         if ($department === null) {
             $this->showNotFound();
@@ -83,6 +92,7 @@ final class DepartmentController extends Controller
 
     public function update(string $id): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         $model = new Department();
         $department = $model->findById($id);
         if ($department === null) {
@@ -121,6 +131,7 @@ final class DepartmentController extends Controller
 
     public function delete(string $id): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -138,13 +149,15 @@ final class DepartmentController extends Controller
         $this->redirect('/department/index');
     }
 
-    private function renderIndex(?string $error = null): void
+    private function renderIndex(?string $error = null, int $page = 1): void
     {
+        $result = (new Department())->getPaginated($page, self::ITEMS_PER_PAGE);
         $this->render('hr/departments/index', [
-            'departments' => (new Department())->findAll(),
+            'departments' => $result['items'],
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Phòng ban - Mini ERP',
+            'pagination' => $result['pagination'],
         ]);
     }
 

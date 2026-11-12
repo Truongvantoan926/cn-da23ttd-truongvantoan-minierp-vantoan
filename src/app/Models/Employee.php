@@ -22,6 +22,20 @@ final class Employee extends Model
         return $statement->fetchAll();
     }
 
+    public function getPaginatedWithDepartment(int $page, int $perPage): array
+    {
+        return $this->paginate(
+            'SELECT employees.*, departments.name AS department_name '
+            . 'FROM employees '
+            . 'LEFT JOIN departments ON departments.id = employees.department_id '
+            . 'ORDER BY employees.full_name ASC, employees.id ASC',
+            'SELECT COUNT(*) FROM employees',
+            [],
+            $page,
+            $perPage
+        );
+    }
+
     public function getByDepartmentIdWithRole(int|string $departmentId): array
     {
         $statement = $this->db->prepare(
@@ -36,5 +50,27 @@ final class Employee extends Model
         $statement->execute(['department_id' => $departmentId]);
 
         return $statement->fetchAll();
+    }
+
+    public function getPaginatedByDepartmentIdWithRole(
+        int|string $departmentId,
+        int $page,
+        int $perPage
+    ): array {
+        $where = ' WHERE employees.department_id = :department_id';
+
+        return $this->paginate(
+            'SELECT employees.*, '
+                . 'COALESCE(NULLIF(employees.position, \'\'), roles.name) AS role_name '
+                . 'FROM employees '
+                . 'LEFT JOIN users ON users.employee_id = employees.id '
+                . 'LEFT JOIN roles ON roles.id = users.role_id'
+                . $where
+                . ' ORDER BY employees.full_name ASC, employees.id ASC',
+            'SELECT COUNT(*) FROM employees' . $where,
+            [':department_id' => $departmentId],
+            $page,
+            $perPage
+        );
     }
 }

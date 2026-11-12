@@ -20,6 +20,18 @@ final class Receipt extends Model
         return $statement->fetchAll();
     }
 
+    public function getPaginatedWithDetails(int $page, int $perPage): array
+    {
+        return $this->paginate(
+            $this->detailsSelect()
+                . ' ORDER BY inventory_receipts.created_at DESC, inventory_receipts.id DESC',
+            'SELECT COUNT(*) FROM inventory_receipts',
+            [],
+            $page,
+            $perPage
+        );
+    }
+
     public function getRecent(): array
     {
         $statement = $this->db->query(

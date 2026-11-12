@@ -51,10 +51,7 @@
 
 <main class="container flex-grow-1 py-4 py-lg-5">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 no-print">
-        <a class="text-decoration-none" href="<?= BASE_URL ?>/receipt/index">
-            <i class="fa-solid fa-arrow-left me-2" aria-hidden="true"></i>
-            Danh sách giao dịch kho
-        </a>
+        <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>/receipt/index">Quay lại danh sách</a>
         <button class="btn btn-outline-secondary" type="button" onclick="window.print()">
             <i class="fa-solid fa-print me-2" aria-hidden="true"></i>
             In phiếu kho

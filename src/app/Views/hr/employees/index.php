@@ -107,4 +107,5 @@
             </table>
         </div>
     </div>
+<?php require $paginationViewPath; ?>
 </main>

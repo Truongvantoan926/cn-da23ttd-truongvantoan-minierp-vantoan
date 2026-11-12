@@ -25,6 +25,24 @@ final class ProductSerial extends Model
         return $statement->fetchAll();
     }
 
+    public function getPaginatedWithProduct(int $page, int $perPage): array
+    {
+        $from = ' FROM product_serials '
+            . 'INNER JOIN products ON products.id = product_serials.product_id';
+
+        return $this->paginate(
+            'SELECT product_serials.*, products.sku, products.name AS product_name, '
+                . 'DATE_ADD(product_serials.sold_date, INTERVAL product_serials.warranty_months MONTH) '
+                . 'AS warranty_end_date'
+                . $from
+                . ' ORDER BY products.name ASC, product_serials.serial_number ASC',
+            'SELECT COUNT(*)' . $from,
+            [],
+            $page,
+            $perPage
+        );
+    }
+
     public function getByProductId(int|string $productId): array
     {
         $statement = $this->db->prepare(
@@ -38,6 +56,27 @@ final class ProductSerial extends Model
         $statement->execute(['product_id' => $productId]);
 
         return $statement->fetchAll();
+    }
+
+    public function getPaginatedByProductId(
+        int|string $productId,
+        int $page,
+        int $perPage
+    ): array {
+        $where = ' WHERE product_serials.product_id = :product_id';
+
+        return $this->paginate(
+            'SELECT product_serials.*, '
+                . 'DATE_ADD(product_serials.sold_date, INTERVAL product_serials.warranty_months MONTH) '
+                . 'AS warranty_end_date '
+                . 'FROM product_serials'
+                . $where
+                . ' ORDER BY product_serials.serial_number ASC',
+            'SELECT COUNT(*) FROM product_serials' . $where,
+            [':product_id' => $productId],
+            $page,
+            $perPage
+        );
     }
 
     public function getAllForReceiptForm(): array
@@ -59,6 +98,21 @@ final class ProductSerial extends Model
         $statement->execute(['product_id' => $productId]);
 
         return $statement->fetchColumn() !== false;
+    }
+
+    public function createInStock(
+        int $productId,
+        string $serialNumber,
+        ?int $receiptInId = null,
+        int $warrantyMonths = 12
+    ): string {
+        return $this->insert([
+            'product_id' => $productId,
+            'serial_number' => $serialNumber,
+            'receipt_in_id' => $receiptInId,
+            'status' => 'in_stock',
+            'warranty_months' => $warrantyMonths,
+        ]);
     }
 
     public function findBySerial(string $serial_number): ?array

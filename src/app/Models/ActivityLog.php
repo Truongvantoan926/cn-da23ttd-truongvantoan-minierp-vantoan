@@ -60,4 +60,24 @@ final class ActivityLog extends Model
 
         return $statement->fetchAll();
     }
+
+    public function getPaginated(int $page, int $perPage): array
+    {
+        $from = ' FROM activity_logs '
+            . 'LEFT JOIN users ON users.id = activity_logs.user_id '
+            . 'LEFT JOIN employees ON employees.id = users.employee_id';
+
+        return $this->paginate(
+            'SELECT activity_logs.id, activity_logs.user_id, activity_logs.action, '
+                . 'activity_logs.description, activity_logs.ip_address, activity_logs.created_at, '
+                . 'COALESCE(employees.full_name, users.username, \'Tài khoản không còn tồn tại\') '
+                . 'AS user_name'
+                . $from
+                . ' ORDER BY activity_logs.created_at DESC, activity_logs.id DESC',
+            'SELECT COUNT(*)' . $from,
+            [],
+            $page,
+            $perPage
+        );
+    }
 }

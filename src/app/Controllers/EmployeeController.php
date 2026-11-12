@@ -17,21 +17,23 @@ final class EmployeeController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::checkRole([1, 2, 5]);
+        AuthMiddleware::checkPermission('hr.view');
     }
 
     public function index(): void
     {
-        $this->renderIndex();
+        $this->renderIndex(null, $this->requestedPage());
     }
 
     public function create(): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         $this->renderForm('create', $this->emptyValues());
     }
 
     public function store(): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -72,6 +74,7 @@ final class EmployeeController extends Controller
 
     public function edit(string $id): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         $employee = (new Employee())->findById($id);
         if ($employee === null) {
             $this->showNotFound();
@@ -83,6 +86,7 @@ final class EmployeeController extends Controller
 
     public function update(string $id): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         $model = new Employee();
         $employee = $model->findById($id);
         if ($employee === null) {
@@ -136,6 +140,7 @@ final class EmployeeController extends Controller
 
     public function delete(string $id): void
     {
+        AuthMiddleware::checkPermission('hr.manage');
         if (!$this->isPostRequest()) {
             http_response_code(405);
             header('Allow: POST');
@@ -163,13 +168,15 @@ final class EmployeeController extends Controller
         $this->redirect('/employee/index');
     }
 
-    private function renderIndex(?string $error = null): void
+    private function renderIndex(?string $error = null, int $page = 1): void
     {
+        $result = (new Employee())->getPaginatedWithDepartment($page, self::ITEMS_PER_PAGE);
         $this->render('hr/employees/index', [
             'csrfToken' => $this->csrfToken(),
-            'employees' => (new Employee())->getAllWithDepartment(),
+            'employees' => $result['items'],
             'error' => $error,
             'pageTitle' => 'Nhân viên - Mini ERP',
+            'pagination' => $result['pagination'],
         ]);
     }
 
