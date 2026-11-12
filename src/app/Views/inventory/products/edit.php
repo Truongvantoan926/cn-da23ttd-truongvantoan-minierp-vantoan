@@ -19,6 +19,7 @@
             class="card border-0 shadow-sm"
             action="<?= BASE_URL ?>/product/update/<?= rawurlencode((string) $product['id']) ?>"
             method="POST"
+            enctype="multipart/form-data"
         >
             <div class="card-body p-4">
                 <input
@@ -68,6 +69,57 @@
                         </select>
                     </div>
                     <div class="col-md-6">
+                        <label for="product_images" class="form-label">Thêm ảnh sản phẩm</label>
+                        <input
+                            type="file"
+                            class="form-control"
+                            id="product_images"
+                            name="product_images[]"
+                            accept="image/*"
+                            multiple
+                        >
+                        <div class="form-text">Tối đa 8 ảnh mỗi lần tải lên, mỗi ảnh không quá 5 MB.</div>
+                        <div class="mt-3">
+                            <div class="form-label">Ảnh hiện tại</div>
+                            <?php if ($images === []): ?>
+                                <p class="text-secondary small mb-0">Sản phẩm chưa có ảnh.</p>
+                            <?php else: ?>
+                                <div class="d-flex flex-wrap gap-3 mt-2">
+                                    <?php foreach ($images as $image): ?>
+                                        <div class="position-relative d-inline-block">
+                                            <img
+                                                class="img-thumbnail"
+                                                src="<?= htmlspecialchars(rtrim(BASE_URL, '/') . '/' . ltrim((string) $image['image_path'], '/'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                                alt="Ảnh sản phẩm"
+                                                style="width: 80px; height: 80px; object-fit: cover;"
+                                            >
+                                            <form
+                                                class="d-inline"
+                                                action="<?= BASE_URL ?>/product/deleteImage/<?= rawurlencode((string) $image['id']) ?>"
+                                                method="POST"
+                                                onsubmit="return confirm('Xóa ảnh này?');"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name="csrf_token"
+                                                    value="<?= htmlspecialchars($csrfToken, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                                >
+                                                <button
+                                                    class="btn btn-danger btn-sm position-absolute"
+                                                    type="submit"
+                                                    aria-label="Xóa ảnh sản phẩm"
+                                                    style="top: -5px; right: -5px; padding: 2px 6px; font-size: 10px; border-radius: 50%; line-height: 1;"
+                                                >
+                                                    X
+                                                </button>
+                                            </form>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
                         <label for="unit" class="form-label">Đơn vị tính <span class="text-danger">*</span></label>
                         <input
                             type="text"
@@ -86,7 +138,7 @@
                             class="form-control"
                             id="cost_price"
                             name="cost_price"
-                            value="<?= htmlspecialchars($values['cost_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $values['cost_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0"
                             step="0.01"
                             required
@@ -99,7 +151,7 @@
                             class="form-control"
                             id="sale_price"
                             name="sale_price"
-                            value="<?= htmlspecialchars($values['sale_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $values['sale_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0"
                             step="0.01"
                             required

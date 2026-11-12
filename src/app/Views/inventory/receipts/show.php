@@ -123,8 +123,8 @@
                                 <td><?= htmlspecialchars((string) $item['product_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td><?= htmlspecialchars((string) $item['unit'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td class="text-end"><?= number_format((float) $item['qty'], 0, ',', '.') ?></td>
-                                <td class="text-end text-nowrap"><?= number_format((float) $item['price'], 2, ',', '.') ?> ₫</td>
-                                <td class="text-end text-nowrap"><?= number_format((float) $item['total'], 2, ',', '.') ?> ₫</td>
+                                <td class="text-end text-nowrap"><?= \App\Core\CurrencyFormatter::format($item['price']) ?>&nbsp;₫</td>
+                                <td class="text-end text-nowrap"><?= \App\Core\CurrencyFormatter::format($item['total']) ?>&nbsp;₫</td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -132,7 +132,7 @@
                         <tr>
                             <th colspan="6" class="text-end">Tổng cộng</th>
                             <th class="text-end text-nowrap">
-                                <?= number_format((float) $receipt['total_amount'], 2, ',', '.') ?> ₫
+                                <?= \App\Core\CurrencyFormatter::format($receipt['total_amount']) ?>&nbsp;₫
                             </th>
                         </tr>
                     </tfoot>

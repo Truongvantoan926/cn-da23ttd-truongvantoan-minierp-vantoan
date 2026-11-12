@@ -14,72 +14,87 @@
     <div class="row g-4">
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div class="flex-grow-1 me-3">
                         <p class="text-secondary mb-2">Tổng nhân viên</p>
                         <p class="h3 mb-0"><?= number_format($employeeCount, 0, ',', '.') ?></p>
                     </div>
-                    <span class="rounded-circle bg-primary-subtle text-primary p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-primary-subtle text-primary"
+                        style="width: 50px; height: 50px;"
+                    >
                         <i class="fa-solid fa-users fa-lg" aria-hidden="true"></i>
-                    </span>
+                    </div>
                 </div>
             </section>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div class="flex-grow-1 me-3">
                         <p class="text-secondary mb-2">Tổng sản phẩm</p>
                         <p class="h3 mb-0"><?= number_format($productCount, 0, ',', '.') ?></p>
                     </div>
-                    <span class="rounded-circle bg-success-subtle text-success p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-success-subtle text-success"
+                        style="width: 50px; height: 50px;"
+                    >
                         <i class="fa-solid fa-boxes-stacked fa-lg" aria-hidden="true"></i>
-                    </span>
+                    </div>
                 </div>
             </section>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div class="flex-grow-1 me-3">
                         <p class="text-secondary mb-2">Phiếu giao dịch kho</p>
                         <p class="h3 mb-0"><?= number_format($receiptCount, 0, ',', '.') ?></p>
                     </div>
-                    <span class="rounded-circle bg-warning-subtle text-warning p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-warning-subtle text-warning"
+                        style="width: 50px; height: 50px;"
+                    >
                         <i class="fa-solid fa-arrow-right-arrow-left fa-lg" aria-hidden="true"></i>
-                    </span>
+                    </div>
                 </div>
             </section>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100">
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div class="flex-grow-1 me-3">
                         <p class="text-secondary mb-2">Dư quỹ hiện tại</p>
-                        <p class="h3 mb-0 text-nowrap">
-                            <?= number_format((float) $financeSummary['balance'], 2, ',', '.') ?> ₫
+                        <p class="h3 mb-0">
+                            <?= \App\Core\CurrencyFormatter::format($financeSummary['balance']) ?>&nbsp;₫
                         </p>
                     </div>
-                    <span class="rounded-circle bg-info-subtle text-info p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-info-subtle text-info"
+                        style="width: 50px; height: 50px;"
+                    >
                         <i class="fa-solid fa-wallet fa-lg" aria-hidden="true"></i>
-                    </span>
+                    </div>
                 </div>
             </section>
         </div>
         <div class="col-12 col-sm-6 col-xl-3">
             <section class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
-                <div class="card-body d-flex align-items-center justify-content-between">
-                    <div>
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div class="flex-grow-1 me-3">
                         <p class="text-secondary mb-2">Cảnh báo tồn kho</p>
                         <p class="h3 mb-0 text-danger"><?= number_format(count($lowStockProducts), 0, ',', '.') ?></p>
                         <p class="small text-secondary mb-0">Sản phẩm cần nhập thêm</p>
                     </div>
-                    <span class="rounded-circle bg-danger-subtle text-danger p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-danger-subtle text-danger"
+                        style="width: 50px; height: 50px;"
+                    >
                         <i class="fa-solid fa-triangle-exclamation fa-lg" aria-hidden="true"></i>
-                    </span>
+                    </div>
                 </div>
             </section>
         </div>
@@ -136,7 +151,7 @@
                                                 <?= htmlspecialchars((string) $receipt['created_at'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                             </td>
                                             <td class="text-end text-nowrap">
-                                                <?= number_format((float) $receipt['total_amount'], 2, ',', '.') ?> ₫
+                                                <?= \App\Core\CurrencyFormatter::format($receipt['total_amount']) ?>&nbsp;₫
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>

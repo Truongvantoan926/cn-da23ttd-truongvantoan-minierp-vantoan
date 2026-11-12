@@ -265,6 +265,20 @@ CREATE TABLE IF NOT EXISTS products (
     CONSTRAINT chk_products_stock CHECK (min_stock >= 0 AND stock_qty >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS product_images (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    product_id BIGINT UNSIGNED NOT NULL,
+    image_path VARCHAR(255) NOT NULL,
+    is_main TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_product_images_product_main (product_id, is_main, id),
+    CONSTRAINT fk_product_images_product
+        FOREIGN KEY (product_id) REFERENCES products (id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT chk_product_images_is_main CHECK (is_main IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS suppliers (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     code VARCHAR(30) NOT NULL,

@@ -40,7 +40,15 @@
                                     <?= htmlspecialchars((string) $department['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>
                                 <td><?= htmlspecialchars((string) $department['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                                <td class="text-end pe-4">
+                                <td class="text-end pe-4 text-nowrap">
+                                    <a
+                                        class="btn btn-sm btn-outline-secondary me-1"
+                                        href="<?= BASE_URL ?>/department/show/<?= rawurlencode((string) $department['id']) ?>"
+                                        aria-label="Xem phòng ban <?= htmlspecialchars((string) $department['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                    >
+                                        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                        <span class="d-none d-md-inline ms-1">Xem</span>
+                                    </a>
                                     <a
                                         class="btn btn-sm btn-outline-primary me-1"
                                         href="<?= BASE_URL ?>/department/edit/<?= rawurlencode((string) $department['id']) ?>"

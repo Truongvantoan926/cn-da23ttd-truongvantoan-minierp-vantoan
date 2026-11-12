@@ -21,4 +21,20 @@ final class Employee extends Model
 
         return $statement->fetchAll();
     }
+
+    public function getByDepartmentIdWithRole(int|string $departmentId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT employees.*, '
+            . 'COALESCE(NULLIF(employees.position, \'\'), roles.name) AS role_name '
+            . 'FROM employees '
+            . 'LEFT JOIN users ON users.employee_id = employees.id '
+            . 'LEFT JOIN roles ON roles.id = users.role_id '
+            . 'WHERE employees.department_id = :department_id '
+            . 'ORDER BY employees.full_name ASC, employees.id ASC'
+        );
+        $statement->execute(['department_id' => $departmentId]);
+
+        return $statement->fetchAll();
+    }
 }

@@ -117,7 +117,7 @@
                             class="form-control"
                             id="base_salary"
                             name="base_salary"
-                            value="<?= htmlspecialchars($values['base_salary'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $values['base_salary']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0"
                             step="0.01"
                             required

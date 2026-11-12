@@ -50,7 +50,7 @@
                             class="form-control"
                             id="amount"
                             name="amount"
-                            value="<?= htmlspecialchars($values['amount'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $values['amount']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0.01"
                             max="9999999999999.99"
                             step="0.01"

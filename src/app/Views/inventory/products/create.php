@@ -15,7 +15,7 @@
             </div>
         <?php endif; ?>
 
-        <form class="card border-0 shadow-sm" action="<?= BASE_URL ?>/product/store" method="POST">
+        <form class="card border-0 shadow-sm" action="<?= BASE_URL ?>/product/store" method="POST" enctype="multipart/form-data">
             <div class="card-body p-4">
                 <input
                     type="hidden"
@@ -64,6 +64,18 @@
                         </select>
                     </div>
                     <div class="col-md-6">
+                        <label for="product_images" class="form-label">Ảnh sản phẩm</label>
+                        <input
+                            type="file"
+                            class="form-control"
+                            id="product_images"
+                            name="product_images[]"
+                            accept="image/*"
+                            multiple
+                        >
+                        <div class="form-text">Tối đa 8 ảnh, mỗi ảnh không quá 5 MB.</div>
+                    </div>
+                    <div class="col-md-6">
                         <label for="unit" class="form-label">Đơn vị tính <span class="text-danger">*</span></label>
                         <input
                             type="text"
@@ -82,7 +94,7 @@
                             class="form-control"
                             id="cost_price"
                             name="cost_price"
-                            value="<?= htmlspecialchars($values['cost_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $values['cost_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0"
                             step="0.01"
                             required
@@ -95,7 +107,7 @@
                             class="form-control"
                             id="sale_price"
                             name="sale_price"
-                            value="<?= htmlspecialchars($values['sale_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $values['sale_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0"
                             step="0.01"
                             required

@@ -20,13 +20,16 @@
         <div class="col-md-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-success-subtle text-success p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-success-subtle text-success"
+                        style="width: 60px; height: 60px;"
+                    >
                         <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-secondary">Tổng Thu</div>
                         <div class="fs-4 fw-semibold text-success">
-                            <?= number_format((float) $summary['total_income'], 2, ',', '.') ?> ₫
+                            <?= \App\Core\CurrencyFormatter::format($summary['total_income']) ?>&nbsp;₫
                         </div>
                     </div>
                 </div>
@@ -35,13 +38,16 @@
         <div class="col-md-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-danger-subtle text-danger p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-danger-subtle text-danger"
+                        style="width: 60px; height: 60px;"
+                    >
                         <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-secondary">Tổng Chi</div>
                         <div class="fs-4 fw-semibold text-danger">
-                            <?= number_format((float) $summary['total_expense'], 2, ',', '.') ?> ₫
+                            <?= \App\Core\CurrencyFormatter::format($summary['total_expense']) ?>&nbsp;₫
                         </div>
                     </div>
                 </div>
@@ -50,13 +56,16 @@
         <div class="col-md-4">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body d-flex align-items-center gap-3">
-                    <div class="rounded-circle bg-primary-subtle text-primary p-3">
+                    <div
+                        class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0 bg-primary-subtle text-primary"
+                        style="width: 60px; height: 60px;"
+                    >
                         <i class="fa-solid fa-wallet" aria-hidden="true"></i>
                     </div>
                     <div>
                         <div class="text-secondary">Dư quỹ</div>
                         <div class="fs-4 fw-semibold text-primary">
-                            <?= number_format((float) $summary['balance'], 2, ',', '.') ?> ₫
+                            <?= \App\Core\CurrencyFormatter::format($summary['balance']) ?>&nbsp;₫
                         </div>
                     </div>
                 </div>
@@ -102,7 +111,7 @@
                                 </td>
                                 <td><?= htmlspecialchars((string) $transaction['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td class="text-end text-nowrap <?= $isIncome ? 'text-success' : 'text-danger' ?>">
-                                    <?= number_format((float) $transaction['amount'], 2, ',', '.') ?> ₫
+                                    <?= \App\Core\CurrencyFormatter::format($transaction['amount']) ?>&nbsp;₫
                                 </td>
                                 <td><?= htmlspecialchars((string) $transaction['payment_method'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td><?= htmlspecialchars((string) $transaction['trans_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>

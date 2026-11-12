@@ -18,6 +18,26 @@
         </div>
     <?php endif; ?>
 
+    <form class="row g-2 mb-3" action="<?= BASE_URL ?>/category/index" method="GET">
+        <div class="col-sm-8 col-md-6 col-lg-4">
+            <label class="visually-hidden" for="category-search">Tìm danh mục theo tên</label>
+            <input
+                class="form-control"
+                id="category-search"
+                type="search"
+                name="search"
+                value="<?= htmlspecialchars($search, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                placeholder="Tìm danh mục theo tên"
+            >
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary" type="submit">
+                <i class="fa-solid fa-magnifying-glass me-2" aria-hidden="true"></i>
+                Tìm kiếm
+            </button>
+        </div>
+    </form>
+
     <div class="card border-0 shadow-sm">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -26,16 +46,14 @@
                         <th scope="col" class="ps-4">#</th>
                         <th scope="col">Tên danh mục</th>
                         <th scope="col">Mô tả</th>
-                        <?php if ($canManage): ?>
-                            <th scope="col" class="text-end pe-4">Thao tác</th>
-                        <?php endif; ?>
+                        <th scope="col" class="text-end pe-4">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($categories === []): ?>
                         <tr>
-                            <td colspan="<?= $canManage ? '4' : '3' ?>" class="text-center text-secondary py-5">
-                                Chưa có danh mục nào.
+                            <td colspan="4" class="text-center text-secondary py-5">
+                                <?= $search === '' ? 'Chưa có danh mục nào.' : 'Không tìm thấy danh mục phù hợp.' ?>
                             </td>
                         </tr>
                     <?php else: ?>
@@ -50,8 +68,16 @@
                                 <td>
                                     <?= htmlspecialchars((string) ($category['description'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>
-                                <?php if ($canManage): ?>
                                 <td class="text-end pe-4 text-nowrap">
+                                    <a
+                                        class="btn btn-sm btn-outline-secondary me-1"
+                                        href="<?= BASE_URL ?>/category/show/<?= rawurlencode((string) $category['id']) ?>"
+                                        aria-label="Xem danh mục <?= htmlspecialchars((string) $category['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                    >
+                                        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                        <span class="d-none d-md-inline ms-1">Xem</span>
+                                    </a>
+                                    <?php if ($canManage): ?>
                                     <a
                                         class="btn btn-sm btn-outline-primary me-1"
                                         href="<?= BASE_URL ?>/category/edit/<?= rawurlencode((string) $category['id']) ?>"
@@ -76,8 +102,8 @@
                                             <span class="d-none d-md-inline ms-1">Xóa</span>
                                         </button>
                                     </form>
+                                    <?php endif; ?>
                                 </td>
-                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>

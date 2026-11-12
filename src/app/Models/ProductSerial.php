@@ -25,6 +25,21 @@ final class ProductSerial extends Model
         return $statement->fetchAll();
     }
 
+    public function getByProductId(int|string $productId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT product_serials.*, '
+            . 'DATE_ADD(product_serials.sold_date, INTERVAL product_serials.warranty_months MONTH) '
+            . 'AS warranty_end_date '
+            . 'FROM product_serials '
+            . 'WHERE product_serials.product_id = :product_id '
+            . 'ORDER BY product_serials.serial_number ASC'
+        );
+        $statement->execute(['product_id' => $productId]);
+
+        return $statement->fetchAll();
+    }
+
     public function getAllForReceiptForm(): array
     {
         $statement = $this->db->query(

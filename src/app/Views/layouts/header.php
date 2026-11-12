@@ -17,9 +17,6 @@ $pageTitle = isset($pageTitle) && is_string($pageTitle) ? $pageTitle : 'Mini ERP
         <a class="navbar-brand fw-semibold" href="<?= BASE_URL ?>/dashboard/index">Mini ERP</a>
         <?php if (isset($_SESSION['user_id'])): ?>
             <div class="d-flex align-items-center gap-3">
-                <span class="text-white d-none d-sm-inline">
-                    <?= htmlspecialchars((string) ($_SESSION['username'] ?? 'Tài khoản'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                </span>
                 <a class="btn btn-outline-light btn-sm" href="<?= BASE_URL ?>/profile/index">
                     <i class="fa-solid fa-user me-1" aria-hidden="true"></i>
                     Hồ sơ cá nhân

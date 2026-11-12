@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\AuthMiddleware;
 use App\Core\Controller;
 use App\Models\Department;
+use App\Models\Employee;
 
 final class DepartmentController extends Controller
 {
@@ -18,6 +19,21 @@ final class DepartmentController extends Controller
     public function index(): void
     {
         $this->renderIndex();
+    }
+
+    public function show(string $id): void
+    {
+        $department = (new Department())->findById($id);
+        if ($department === null) {
+            $this->showNotFound();
+            return;
+        }
+
+        $this->render('hr/departments/show', [
+            'department' => $department,
+            'employees' => (new Employee())->getByDepartmentIdWithRole($id),
+            'pageTitle' => (string) $department['name'] . ' - Mini ERP',
+        ]);
     }
 
     public function create(): void

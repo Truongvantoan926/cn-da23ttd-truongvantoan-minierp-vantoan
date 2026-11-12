@@ -105,8 +105,8 @@
                                     <?php foreach ($products as $product): ?>
                                         <option
                                             value="<?= htmlspecialchars((string) $product['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                                            data-cost-price="<?= htmlspecialchars((string) $product['cost_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                                            data-sale-price="<?= htmlspecialchars((string) $product['sale_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                            data-cost-price="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $product['cost_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                            data-sale-price="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $product['sale_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                                             <?= $item['product_id'] === (string) $product['id'] ? 'selected' : '' ?>
                                         >
                                             <?= htmlspecialchars((string) $product['sku'] . ' — ' . (string) $product['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
@@ -132,7 +132,7 @@
                                     class="form-control"
                                     type="number"
                                     name="items[<?= (int) $index ?>][price]"
-                                    value="<?= htmlspecialchars($item['price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                    value="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $item['price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                                     min="0"
                                     step="0.01"
                                     data-item-price
@@ -195,8 +195,8 @@
                                 <?php foreach ($products as $product): ?>
                                     <option
                                         value="<?= htmlspecialchars((string) $product['id'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                                        data-cost-price="<?= htmlspecialchars((string) $product['cost_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
-                                        data-sale-price="<?= htmlspecialchars((string) $product['sale_price'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                        data-cost-price="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $product['cost_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                                        data-sale-price="<?= htmlspecialchars(\App\Core\CurrencyFormatter::formatInput((string) $product['sale_price']), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                                     >
                                         <?= htmlspecialchars((string) $product['sku'] . ' — ' . (string) $product['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                     </option>

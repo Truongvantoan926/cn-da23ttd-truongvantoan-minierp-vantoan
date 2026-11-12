@@ -91,6 +91,11 @@ final class ProfileController extends Controller
             return;
         }
 
+        if (password_verify($newPassword, $passwordHash)) {
+            $_SESSION['profile_error'] = 'Mật khẩu mới không được trùng với mật khẩu hiện tại!';
+            $this->redirect('/profile/index');
+        }
+
         if (strlen($newPassword) < 8 || strlen($newPassword) > 72) {
             $this->renderProfile('Mật khẩu mới phải có độ dài từ 8 đến 72 byte.', null, $profile);
             return;

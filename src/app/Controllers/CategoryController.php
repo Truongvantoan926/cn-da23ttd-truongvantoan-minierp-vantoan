@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\AuthMiddleware;
 use App\Core\Controller;
 use App\Models\Category;
+use App\Models\Product;
 
 final class CategoryController extends Controller
 {
@@ -17,7 +18,24 @@ final class CategoryController extends Controller
 
     public function index(): void
     {
-        $this->renderIndex();
+        $search = $_GET['search'] ?? '';
+        $search = is_string($search) ? trim($search) : '';
+        $this->renderIndex(null, $search);
+    }
+
+    public function show(string $id): void
+    {
+        $category = (new Category())->findById($id);
+        if ($category === null) {
+            $this->showNotFound();
+            return;
+        }
+
+        $this->render('inventory/categories/show', [
+            'category' => $category,
+            'pageTitle' => 'Sản phẩm thuộc danh mục ' . (string) $category['name'] . ' - Mini ERP',
+            'products' => (new Product())->getByCategoryId($id),
+        ]);
     }
 
     public function create(): void
@@ -128,16 +146,18 @@ final class CategoryController extends Controller
         $this->redirect('/category/index');
     }
 
-    private function renderIndex(?string $error = null): void
+    private function renderIndex(?string $error = null, string $search = ''): void
     {
+        $categoryModel = new Category();
         $this->render('inventory/categories/index', [
-            'categories' => (new Category())->findAll(),
+            'categories' => $search === '' ? $categoryModel->findAll() : $categoryModel->search($search),
             'canManage' => AuthMiddleware::hasRole(1)
                 || AuthMiddleware::hasRole(2)
                 || AuthMiddleware::hasRole(4),
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Danh mục - Mini ERP',
+            'search' => $search,
         ]);
     }
 

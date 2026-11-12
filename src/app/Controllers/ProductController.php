@@ -10,11 +10,17 @@ use App\Core\Database;
 use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductSerial;
 use PDOException;
 use Throwable;
 
 final class ProductController extends Controller
 {
+    private const MAX_PRODUCT_IMAGES = 8;
+    private const MAX_PRODUCT_IMAGE_SIZE = 5242880;
+    private const MAX_PRODUCT_IMAGE_PIXELS = 20000000;
+
     public function __construct()
     {
         AuthMiddleware::checkRole([1, 2, 3, 4, 6]);
@@ -22,7 +28,25 @@ final class ProductController extends Controller
 
     public function index(): void
     {
-        $this->renderIndex();
+        $search = $_GET['search'] ?? '';
+        $search = is_string($search) ? trim($search) : '';
+        $this->renderIndex(null, $search);
+    }
+
+    public function show(string $id): void
+    {
+        $product = (new Product())->findByIdWithCategory($id);
+        if ($product === null) {
+            $this->showNotFound();
+            return;
+        }
+
+        $this->render('inventory/products/show', [
+            'images' => (new ProductImage())->getImagesByProductId($id),
+            'pageTitle' => (string) $product['name'] . ' - Mini ERP',
+            'product' => $product,
+            'serials' => (new ProductSerial())->getByProductId($id),
+        ]);
     }
 
     public function exportCsv(): void
@@ -86,10 +110,19 @@ final class ProductController extends Controller
             return;
         }
 
+        try {
+            $uploadedImages = $this->validatedProductImages();
+        } catch (\InvalidArgumentException $exception) {
+            $this->renderForm('create', $values, $exception->getMessage());
+            return;
+        }
+
         $pdo = Database::getInstance()->getConnection();
+        $storedImagePaths = [];
         try {
             $pdo->beginTransaction();
             $productId = (new Product())->insert($this->databaseValues($values));
+            $this->storeProductImages($productId, $uploadedImages, false, $storedImagePaths);
             (new ActivityLog())->log(
                 'product.create',
                 sprintf('Tạo sản phẩm #%s (SKU: %s).', $productId, $values['sku'])
@@ -99,6 +132,7 @@ final class ProductController extends Controller
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            $this->removeStoredProductImages($storedImagePaths);
 
             if ($exception instanceof PDOException && $exception->getCode() === '23000') {
                 $this->renderForm('create', $values, 'SKU đã tồn tại hoặc danh mục không còn hợp lệ.');
@@ -120,7 +154,8 @@ final class ProductController extends Controller
             return;
         }
 
-        $this->renderForm('edit', $this->formValues($product), null, $product);
+        $images = (new ProductImage())->getImagesByProductId($id);
+        $this->renderForm('edit', $this->formValues($product), null, $product, $images);
     }
 
     public function update(string $id): void
@@ -158,10 +193,28 @@ final class ProductController extends Controller
             return;
         }
 
+        try {
+            $uploadedImages = $this->validatedProductImages();
+        } catch (\InvalidArgumentException $exception) {
+            $this->renderForm('edit', $values, $exception->getMessage(), $product);
+            return;
+        }
+
         $pdo = Database::getInstance()->getConnection();
+        $storedImagePaths = [];
         try {
             $pdo->beginTransaction();
             $model->update($id, $this->databaseValues($values));
+            if ($uploadedImages !== []) {
+                $hasMainImage = false;
+                foreach ((new ProductImage())->getImagesByProductId($id) as $existingImage) {
+                    if ((int) $existingImage['is_main'] === 1) {
+                        $hasMainImage = true;
+                        break;
+                    }
+                }
+                $this->storeProductImages($id, $uploadedImages, $hasMainImage, $storedImagePaths);
+            }
             (new ActivityLog())->log(
                 'product.update',
                 sprintf('Cập nhật sản phẩm #%s (SKU: %s).', $id, $values['sku'])
@@ -171,6 +224,7 @@ final class ProductController extends Controller
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            $this->removeStoredProductImages($storedImagePaths);
 
             if ($exception instanceof PDOException && $exception->getCode() === '23000') {
                 $this->renderForm('edit', $values, 'SKU đã tồn tại hoặc danh mục không còn hợp lệ.', $product);
@@ -213,8 +267,75 @@ final class ProductController extends Controller
         $this->redirect('/product/index');
     }
 
-    private function renderIndex(?string $error = null): void
+    public function deleteImage(string $imageId): void
     {
+        AuthMiddleware::checkRole([1, 2, 4]);
+        if (!$this->isPostRequest()) {
+            http_response_code(405);
+            header('Allow: POST');
+            $this->renderIndex('Phương thức gửi yêu cầu không hợp lệ.');
+            return;
+        }
+
+        if (!$this->hasValidCsrfToken()) {
+            http_response_code(403);
+            $this->renderIndex('Yêu cầu không hợp lệ hoặc phiên đã hết hạn.');
+            return;
+        }
+
+        $imageModel = new ProductImage();
+        $image = $imageModel->findById($imageId);
+        if ($image === null) {
+            http_response_code(404);
+            $this->renderIndex('Không tìm thấy ảnh sản phẩm được yêu cầu.');
+            return;
+        }
+
+        $storedImagePath = $this->productImageAbsolutePath($image);
+        if (is_file($storedImagePath) && !unlink($storedImagePath)) {
+            throw new \RuntimeException('Không thể xóa tệp ảnh sản phẩm trên máy chủ.');
+        }
+
+        $productId = (string) $image['product_id'];
+        $remainingImages = array_values(array_filter(
+            $imageModel->getImagesByProductId($productId),
+            static fn (array $candidate): bool => (string) $candidate['id'] !== $imageId
+        ));
+        $hasMainImage = false;
+        foreach ($remainingImages as $remainingImage) {
+            if ((int) $remainingImage['is_main'] === 1) {
+                $hasMainImage = true;
+                break;
+            }
+        }
+        $promoteImageId = !$hasMainImage && $remainingImages !== []
+            ? $remainingImages[0]['id']
+            : null;
+
+        $pdo = Database::getInstance()->getConnection();
+        $pdo->beginTransaction();
+        try {
+            if ($imageModel->delete($imageId) === 0) {
+                throw new \RuntimeException('Không thể xóa ảnh sản phẩm khỏi cơ sở dữ liệu.');
+            }
+            if ($promoteImageId !== null) {
+                $imageModel->update($promoteImageId, ['is_main' => 1]);
+            }
+            $pdo->commit();
+        } catch (Throwable $exception) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            throw $exception;
+        }
+
+        $this->redirect('/product/edit/' . rawurlencode($productId));
+    }
+
+    private function renderIndex(?string $error = null, string $search = ''): void
+    {
+        $productModel = new Product();
         $this->render('inventory/products/index', [
             'canManage' => AuthMiddleware::hasRole(1)
                 || AuthMiddleware::hasRole(2)
@@ -222,8 +343,201 @@ final class ProductController extends Controller
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Sản phẩm - Mini ERP',
-            'products' => (new Product())->getAllWithCategory(),
+            'products' => $search === '' ? $productModel->getAllWithCategory() : $productModel->search($search),
+            'search' => $search,
         ]);
+    }
+
+    private function validatedProductImages(): array
+    {
+        $upload = $_FILES['product_images'] ?? null;
+        if ($upload === null) {
+            return [];
+        }
+
+        if (!is_array($upload)) {
+            throw new \InvalidArgumentException('Dữ liệu ảnh tải lên không hợp lệ.');
+        }
+
+        foreach (['name', 'tmp_name', 'error', 'size'] as $field) {
+            if (!isset($upload[$field]) || !is_array($upload[$field])) {
+                throw new \InvalidArgumentException('Dữ liệu ảnh tải lên không hợp lệ.');
+            }
+        }
+
+        $fileCount = count($upload['name']);
+        if (
+            count($upload['tmp_name']) !== $fileCount
+            || count($upload['error']) !== $fileCount
+            || count($upload['size']) !== $fileCount
+        ) {
+            throw new \InvalidArgumentException('Dữ liệu ảnh tải lên không hợp lệ.');
+        }
+
+        $mimeExtensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $selectedCount = 0;
+        foreach ($upload['error'] as $error) {
+            if (!is_int($error)) {
+                throw new \InvalidArgumentException('Dữ liệu ảnh tải lên không hợp lệ.');
+            }
+            if ($error !== UPLOAD_ERR_NO_FILE) {
+                $selectedCount++;
+            }
+        }
+        if ($selectedCount > self::MAX_PRODUCT_IMAGES) {
+            throw new \InvalidArgumentException(
+                'Mỗi lần chỉ có thể tải lên tối đa ' . self::MAX_PRODUCT_IMAGES . ' ảnh.'
+            );
+        }
+        if ($selectedCount === 0) {
+            return [];
+        }
+
+        $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+        if ($fileInfo === false) {
+            throw new \RuntimeException('Không thể xác minh định dạng ảnh trên máy chủ.');
+        }
+
+        $validatedImages = [];
+        try {
+            foreach ($upload['error'] as $index => $error) {
+                if ($error === UPLOAD_ERR_NO_FILE) {
+                    continue;
+                }
+                if ($error !== UPLOAD_ERR_OK) {
+                    $message = match ($error) {
+                        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Ảnh tải lên vượt quá giới hạn cho phép.',
+                        UPLOAD_ERR_PARTIAL => 'Ảnh chỉ được tải lên một phần, vui lòng thử lại.',
+                        UPLOAD_ERR_NO_TMP_DIR => 'Máy chủ chưa cấu hình thư mục tạm để tải ảnh.',
+                        UPLOAD_ERR_CANT_WRITE => 'Máy chủ không thể ghi ảnh tải lên.',
+                        UPLOAD_ERR_EXTENSION => 'Một tiện ích mở rộng của máy chủ đã dừng tải ảnh.',
+                        default => 'Không thể tải ảnh lên.',
+                    };
+                    throw new \InvalidArgumentException($message);
+                }
+
+                $temporaryPath = $upload['tmp_name'][$index] ?? null;
+                if (!is_string($temporaryPath) || !is_uploaded_file($temporaryPath)) {
+                    throw new \InvalidArgumentException('Tệp ảnh tải lên không hợp lệ.');
+                }
+
+                $fileSize = filesize($temporaryPath);
+                if ($fileSize === false) {
+                    throw new \RuntimeException('Không thể đọc kích thước ảnh tải lên.');
+                }
+                if ($fileSize < 1 || $fileSize > self::MAX_PRODUCT_IMAGE_SIZE) {
+                    throw new \InvalidArgumentException('Mỗi ảnh phải có dung lượng không quá 5 MB.');
+                }
+
+                $mimeType = finfo_file($fileInfo, $temporaryPath);
+                if (!is_string($mimeType) || !isset($mimeExtensions[$mimeType])) {
+                    throw new \InvalidArgumentException('Chỉ chấp nhận ảnh JPEG, PNG, GIF hoặc WebP.');
+                }
+
+                $imageInfo = @getimagesize($temporaryPath);
+                if (!is_array($imageInfo) || ($imageInfo['mime'] ?? null) !== $mimeType) {
+                    throw new \InvalidArgumentException('Tệp tải lên không phải ảnh hợp lệ.');
+                }
+
+                $width = (int) ($imageInfo[0] ?? 0);
+                $height = (int) ($imageInfo[1] ?? 0);
+                if (
+                    $width < 1
+                    || $height < 1
+                    || $width * $height > self::MAX_PRODUCT_IMAGE_PIXELS
+                ) {
+                    throw new \InvalidArgumentException('Kích thước ảnh vượt quá giới hạn cho phép.');
+                }
+
+                $validatedImages[] = [
+                    'extension' => $mimeExtensions[$mimeType],
+                    'temporary_path' => $temporaryPath,
+                ];
+            }
+        } finally {
+            finfo_close($fileInfo);
+        }
+
+        return $validatedImages;
+    }
+
+    private function storeProductImages(
+        int|string $productId,
+        array $images,
+        bool $hasMainImage,
+        array &$storedImagePaths
+    ): void {
+        if ($images === []) {
+            return;
+        }
+
+        $directory = dirname(__DIR__, 2)
+            . DIRECTORY_SEPARATOR . 'public'
+            . DIRECTORY_SEPARATOR . 'uploads'
+            . DIRECTORY_SEPARATOR . 'products';
+        if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+            throw new \RuntimeException('Không thể tạo thư mục lưu ảnh sản phẩm.');
+        }
+        if (!is_writable($directory)) {
+            throw new \RuntimeException('Thư mục lưu ảnh sản phẩm không có quyền ghi.');
+        }
+
+        $imageModel = new ProductImage();
+        foreach ($images as $image) {
+            do {
+                $filename = bin2hex(random_bytes(16)) . '.' . $image['extension'];
+                $destination = $directory . DIRECTORY_SEPARATOR . $filename;
+            } while (file_exists($destination));
+
+            if (!move_uploaded_file($image['temporary_path'], $destination)) {
+                throw new \RuntimeException('Không thể lưu ảnh sản phẩm lên máy chủ.');
+            }
+            $storedImagePaths[] = $destination;
+
+            $imageModel->insert([
+                'product_id' => $productId,
+                'image_path' => 'uploads/products/' . $filename,
+                'is_main' => $hasMainImage ? 0 : 1,
+            ]);
+            $hasMainImage = true;
+        }
+    }
+
+    private function removeStoredProductImages(array $paths): void
+    {
+        $failedToRemove = false;
+        foreach ($paths as $path) {
+            if (is_file($path) && !unlink($path)) {
+                $failedToRemove = true;
+            }
+        }
+
+        if ($failedToRemove) {
+            throw new \RuntimeException('Không thể dọn dẹp ảnh sau khi lưu sản phẩm thất bại.');
+        }
+    }
+
+    private function productImageAbsolutePath(array $image): string
+    {
+        $relativePath = str_replace('\\', '/', (string) ($image['image_path'] ?? ''));
+        $prefix = 'uploads/products/';
+        $filename = str_starts_with($relativePath, $prefix)
+            ? substr($relativePath, strlen($prefix))
+            : '';
+        if (!preg_match('/\A[a-f0-9]{32}\.(?:jpg|png|gif|webp)\z/i', $filename)) {
+            throw new \RuntimeException('Đường dẫn ảnh sản phẩm không hợp lệ.');
+        }
+
+        return dirname(__DIR__, 2)
+            . DIRECTORY_SEPARATOR . 'public'
+            . DIRECTORY_SEPARATOR . 'uploads'
+            . DIRECTORY_SEPARATOR . 'products'
+            . DIRECTORY_SEPARATOR . $filename;
     }
 
     private function csvText(mixed $value): string
@@ -239,12 +553,16 @@ final class ProductController extends Controller
         string $form,
         array $values,
         ?string $error = null,
-        ?array $product = null
+        ?array $product = null,
+        ?array $images = null
     ): void {
         $this->render('inventory/products/' . $form, [
             'categories' => (new Category())->findAll(),
             'csrfToken' => $this->csrfToken(),
             'error' => $error,
+            'images' => $form === 'edit' && $product !== null
+                ? ($images ?? (new ProductImage())->getImagesByProductId($product['id']))
+                : [],
             'pageTitle' => ($form === 'edit' ? 'Sửa' : 'Thêm') . ' sản phẩm - Mini ERP',
             'product' => $product,
             'values' => $values,

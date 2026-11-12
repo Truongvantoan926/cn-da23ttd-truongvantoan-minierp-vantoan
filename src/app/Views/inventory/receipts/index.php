@@ -55,7 +55,7 @@
                                 <td><?= htmlspecialchars((string) ($receipt['partner_name'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td><?= htmlspecialchars((string) ($receipt['employee_name'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td class="text-end text-nowrap">
-                                    <?= number_format((float) $receipt['total_amount'], 2, ',', '.') ?> ₫
+                                    <?= \App\Core\CurrencyFormatter::format($receipt['total_amount']) ?>&nbsp;₫
                                 </td>
                                 <td class="text-end pe-4">
                                     <a
