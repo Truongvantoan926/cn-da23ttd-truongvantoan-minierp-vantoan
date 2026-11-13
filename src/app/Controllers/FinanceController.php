@@ -21,13 +21,25 @@ final class FinanceController extends Controller
 
     public function index(): void
     {
+        [$filters, $filterError] = $this->queryFilters();
+        if ($filterError !== null) {
+            $filters = $this->defaultQueryFilters();
+        }
         $model = new Transaction();
-        $result = $model->getPaginatedWithUser($this->requestedPage(), self::ITEMS_PER_PAGE);
+        $result = $model->getPaginatedWithUser(
+            $this->requestedPage(),
+            self::ITEMS_PER_PAGE,
+            $filters
+        );
         $this->render('finance/index', [
+            'dailyTotals' => $model->getDailyTotals($filters),
+            'error' => $filterError,
+            'filters' => $filters,
             'pageTitle' => 'Sổ quỹ Thu/Chi - Mini ERP',
             'pagination' => $result['pagination'],
-            'summary' => $model->getSummary(),
+            'summary' => $model->getSummary($filters),
             'transactions' => $result['items'],
+            'years' => $model->getAvailableYears(),
         ]);
     }
 
@@ -35,7 +47,15 @@ final class FinanceController extends Controller
     {
         AuthMiddleware::checkPermission('finance.view');
 
-        $transactions = (new Transaction())->getAllWithUser();
+        [$filters, $filterError] = $this->queryFilters();
+        if ($filterError !== null) {
+            http_response_code(400);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo $filterError;
+            return;
+        }
+
+        $transactions = (new Transaction())->getAllWithUser($filters);
         $output = fopen('php://output', 'wb');
         if ($output === false) {
             throw new \RuntimeException('Không thể khởi tạo tệp CSV.');
@@ -47,17 +67,23 @@ final class FinanceController extends Controller
         fwrite($output, "\xEF\xBB\xBF");
         fputcsv(
             $output,
-            ['Mã phiếu', 'Loại', 'Danh mục', 'Số tiền', 'Phương thức', 'Ngày giao dịch', 'Người lập', 'Ghi chú'],
+            ['Mã phiếu', 'Loại', 'Danh mục', 'Nội dung / Diễn giải', 'Số tiền', 'Phương thức', 'Ngày giao dịch', 'Người lập', 'Ghi chú'],
             ',',
             '"',
             ''
         );
 
         foreach ($transactions as $transaction) {
+            $description = trim((string) ($transaction['description'] ?? ''));
+            if ($description === '') {
+                $description = (string) ($transaction['note'] ?? '');
+            }
+
             fputcsv($output, [
                 $this->csvText($transaction['code']),
                 $transaction['type'] === 'income' ? 'Thu' : 'Chi',
                 $this->csvText($transaction['category']),
+                $this->csvText($description),
                 (string) $transaction['amount'],
                 $this->csvText($transaction['payment_method']),
                 (string) $transaction['trans_date'],
@@ -68,6 +94,80 @@ final class FinanceController extends Controller
 
         fclose($output);
         exit;
+    }
+
+    private function queryFilters(): array
+    {
+        $filters = $this->defaultQueryFilters();
+
+        foreach (array_keys($filters) as $field) {
+            if (!isset($_GET[$field])) {
+                continue;
+            }
+            if (!is_string($_GET[$field])) {
+                return [$filters, 'Tham số bộ lọc không hợp lệ.'];
+            }
+            $filters[$field] = trim($_GET[$field]);
+        }
+
+        if (strlen($filters['search']) > 255) {
+            return [$filters, 'Từ khóa tìm kiếm không được vượt quá 255 ký tự.'];
+        }
+        if (!in_array($filters['type'], ['all', 'in', 'out'], true)) {
+            return [$filters, 'Loại giao dịch được chọn không hợp lệ.'];
+        }
+        if ($filters['date'] !== '') {
+            $date = DateTimeImmutable::createFromFormat('!Y-m-d', $filters['date']);
+            $dateErrors = DateTimeImmutable::getLastErrors();
+            if (
+                $date === false
+                || ($dateErrors !== false && (
+                    $dateErrors['warning_count'] > 0
+                    || $dateErrors['error_count'] > 0
+                ))
+                || $date->format('Y-m-d') !== $filters['date']
+            ) {
+                return [$filters, 'Ngày giao dịch được chọn không hợp lệ.'];
+            }
+
+            $filters['month'] = '';
+            $filters['year'] = '';
+        }
+        if (
+            $filters['month'] !== ''
+            && (
+                !preg_match('/\A[0-9]{1,2}\z/', $filters['month'])
+                || (int) $filters['month'] < 1
+                || (int) $filters['month'] > 12
+            )
+        ) {
+            return [$filters, 'Tháng được chọn không hợp lệ.'];
+        }
+        if (
+            $filters['year'] !== ''
+            && (
+                !preg_match('/\A[0-9]{4}\z/', $filters['year'])
+                || (int) $filters['year'] < 1900
+            )
+        ) {
+            return [$filters, 'Năm được chọn không hợp lệ.'];
+        }
+        if ($filters['month'] !== '') {
+            $filters['month'] = (string) (int) $filters['month'];
+        }
+
+        return [$filters, null];
+    }
+
+    private function defaultQueryFilters(): array
+    {
+        return [
+            'search' => '',
+            'type' => 'all',
+            'date' => '',
+            'month' => '',
+            'year' => '',
+        ];
     }
 
     public function create(): void

@@ -30,16 +30,6 @@ foreach ($galleryImages as $galleryImage) {
         break;
     }
 }
-$statusLabels = [
-    'in_stock' => 'Trong kho',
-    'sold' => 'Đã bán',
-    'warranty' => 'Đang bảo hành',
-];
-$statusClasses = [
-    'in_stock' => 'text-bg-primary',
-    'sold' => 'text-bg-secondary',
-    'warranty' => 'text-bg-warning',
-];
 ?>
 <main class="container-fluid flex-grow-1 p-4 p-lg-5">
     <div class="mb-4">
@@ -113,66 +103,21 @@ $statusClasses = [
 
                         <dt class="col-sm-4 text-secondary">Tồn kho thực tế</dt>
                         <dd class="col-sm-8">
-                            <?= number_format((float) $product['stock_qty'], 3, ',', '.') ?>
+                            <?= number_format((int) $product['stock_qty'], 0, ',', '.') ?>
                             <?= htmlspecialchars((string) $product['unit'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                         </dd>
 
                         <dt class="col-sm-4 text-secondary">Tồn kho tối thiểu</dt>
                         <dd class="col-sm-8 mb-0">
-                            <?= number_format((float) $product['min_stock'], 3, ',', '.') ?>
+                            <?= number_format((int) $product['min_stock'], 0, ',', '.') ?>
                             <?= htmlspecialchars((string) $product['unit'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                         </dd>
                     </dl>
                 </div>
             </div>
 
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white py-3">
-                    <h2 class="h5 mb-0">Serial/IMEI và bảo hành</h2>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th scope="col" class="ps-4">Serial/IMEI</th>
-                                <th scope="col">Tình trạng</th>
-                                <th scope="col">Ngày bán</th>
-                                <th scope="col" class="pe-4">Hạn bảo hành</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($serials === []): ?>
-                                <tr>
-                                    <td colspan="4" class="text-center text-secondary py-4">
-                                        Sản phẩm chưa có Serial/IMEI.
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($serials as $serial): ?>
-                                    <?php $status = (string) $serial['status']; ?>
-                                    <tr>
-                                        <td class="ps-4 fw-semibold">
-                                            <?= htmlspecialchars((string) $serial['serial_number'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                                        </td>
-                                        <td>
-                                            <span class="badge <?= htmlspecialchars($statusClasses[$status] ?? 'text-bg-dark', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>">
-                                                <?= htmlspecialchars($statusLabels[$status] ?? $status, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                                            </span>
-                                        </td>
-                                        <td><?= htmlspecialchars((string) ($serial['sold_date'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                                        <td class="pe-4">
-                                            <?= htmlspecialchars((string) ($serial['warranty_end_date'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </section>
     </div>
-<?php require $paginationViewPath; ?>
 </main>
 
 <script>

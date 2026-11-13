@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Core\Model;
+use PDO;
 
 final class ReceiptItem extends Model
 {
@@ -22,6 +23,6 @@ final class ReceiptItem extends Model
         );
         $statement->execute(['receipt_id' => $receiptId]);
 
-        return $statement->fetchAll();
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 }

@@ -23,7 +23,8 @@ final class WarrantyController extends Controller
 
     public function __construct()
     {
-        AuthMiddleware::checkPermission('inventory.view');
+        AuthMiddleware::check();
+        $this->redirect('/dashboard/index');
     }
 
     public function index(): void

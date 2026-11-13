@@ -161,9 +161,9 @@
                             class="form-control"
                             id="min_stock"
                             name="min_stock"
-                            value="<?= htmlspecialchars($values['min_stock'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                            value="<?= htmlspecialchars((string) (int) $values['min_stock'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
                             min="0"
-                            step="0.001"
+                            step="1"
                             required
                         >
                         <div class="form-text">Số lượng tồn thực tế được cập nhật qua nghiệp vụ nhập/xuất kho.</div>

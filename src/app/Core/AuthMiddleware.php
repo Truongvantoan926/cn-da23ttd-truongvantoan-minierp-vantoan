@@ -28,7 +28,6 @@ final class AuthMiddleware
             'inventory.manage_products',
             'inventory.manage_receipts',
             'inventory.manage_stock',
-            'inventory.manage_warranty',
             'inventory.view',
         ],
         'hr' => [

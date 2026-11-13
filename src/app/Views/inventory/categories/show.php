@@ -38,7 +38,7 @@
                                     <?= \App\Core\CurrencyFormatter::format($product['sale_price']) ?>&nbsp;₫
                                 </td>
                                 <td class="text-end pe-4">
-                                    <?= number_format((float) $product['stock_qty'], 3, ',', '.') ?>
+                                    <?= number_format((int) $product['stock_qty'], 0, ',', '.') ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

@@ -83,7 +83,7 @@
                                     <?= \App\Core\CurrencyFormatter::format($product['sale_price']) ?>&nbsp;₫
                                 </td>
                                 <td class="text-end">
-                                    <?= (int) $product['stock_qty'] ?>
+                                    <?= number_format((int) $product['stock_qty'], 0, ',', '.') ?>
                                     <?php if ($isLowStock): ?>
                                         <span class="badge text-bg-danger ms-1">Cần nhập thêm</span>
                                     <?php endif; ?>

@@ -77,7 +77,10 @@ final class CategoryController extends Controller
             return;
         }
 
-        (new Category())->insert(['name' => $values['name']]);
+        (new Category())->insert([
+            'name' => $values['name'],
+            'description' => null,
+        ]);
         $this->redirect('/category/index');
     }
 

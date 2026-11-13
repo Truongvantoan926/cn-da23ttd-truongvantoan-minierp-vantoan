@@ -11,12 +11,11 @@ use App\Models\ActivityLog;
 use App\Models\Customer;
 use App\Models\Employee;
 use App\Models\Product;
-use App\Models\ProductSerial;
 use App\Models\Receipt;
 use App\Models\ReceiptItem;
 use App\Models\Supplier;
+use DomainException;
 use PDO;
-use PDOException;
 use RuntimeException;
 use Throwable;
 
@@ -24,7 +23,6 @@ final class ReceiptController extends Controller
 {
     private const TYPES = ['IN', 'OUT'];
     private const MAX_ITEMS = 100;
-    private const MAX_SERIALS = 1000;
 
     public function __construct()
     {
@@ -73,8 +71,6 @@ final class ReceiptController extends Controller
         $partnerId = (int) $values['partner_id'];
         $employeeId = $values['employee_id'] !== '' ? (int) $values['employee_id'] : null;
         $receiptCode = ($type === 'IN' ? 'PN-' : 'PX-') . strtoupper(bin2hex(random_bytes(8)));
-        $serialModel = new ProductSerial();
-
         try {
             $pdo->beginTransaction();
 
@@ -85,8 +81,9 @@ final class ReceiptController extends Controller
 
             $receiptInsert = $pdo->prepare(
                 'INSERT INTO inventory_receipts '
-                . '(code, type, partner_id, employee_id, total_amount, note) '
-                . 'VALUES (:code, :type, :partner_id, :employee_id, 0, :note)'
+                . '(code, type, partner_id, employee_id, total_amount, note, payment_status, paid_at) '
+                . 'VALUES (:code, :type, :partner_id, :employee_id, 0, :note, :payment_status, '
+                . 'CASE WHEN :paid_immediately = 1 THEN NOW() ELSE NULL END)'
             );
             $receiptInsert->execute([
                 'code' => $receiptCode,
@@ -94,6 +91,8 @@ final class ReceiptController extends Controller
                 'partner_id' => $partnerId,
                 'employee_id' => $employeeId,
                 'note' => $values['note'] !== '' ? $values['note'] : null,
+                'payment_status' => $type === 'IN' ? 'paid' : 'pending',
+                'paid_immediately' => $type === 'IN' ? 1 : 0,
             ]);
 
             $receiptId = (int) $pdo->lastInsertId();
@@ -149,44 +148,6 @@ final class ReceiptController extends Controller
 
                     $stockIn->execute(['qty' => $quantity, 'product_id' => $productId]);
 
-                    foreach ($item['serial_numbers'] as $serialNumber) {
-                        $serialModel->createInStock($productId, $serialNumber, $receiptId);
-                    }
-                }
-
-                if ($type === 'OUT' && $serialModel->hasSerialsForProduct($productId)) {
-                    $serialNumbers = $item['serial_numbers'];
-                    $missingSerialCount = $quantity - count($serialNumbers);
-                    if ($missingSerialCount > 0) {
-                        $additionalSerials = $this->getAvailableSerialNumbers(
-                            $pdo,
-                            $productId,
-                            $missingSerialCount,
-                            $serialNumbers
-                        );
-                        if (count($additionalSerials) !== $missingSerialCount) {
-                            $pdo->rollBack();
-                            $this->renderForm(
-                                $values,
-                                'Không đủ Serial/IMEI còn trong kho cho số lượng xuất đã nhập.'
-                            );
-                            return;
-                        }
-
-                        $serialNumbers = array_merge($serialNumbers, $additionalSerials);
-                    }
-
-                    $serialError = $this->markSerialsSold(
-                        $pdo,
-                        $productId,
-                        $serialNumbers,
-                        $receiptId
-                    );
-                    if ($serialError !== null) {
-                        $pdo->rollBack();
-                        $this->renderForm($values, $serialError);
-                        return;
-                    }
                 }
 
                 $itemInsert->execute([
@@ -211,32 +172,61 @@ final class ReceiptController extends Controller
             );
             $receiptUpdate->execute(['total' => $total, 'receipt_id' => $receiptId]);
 
+            if ($type === 'IN') {
+                (new Receipt())->recordInboundPayment($receiptId, (int) $_SESSION['user_id']);
+            }
+
             (new ActivityLog())->log(
                 'receipt.create',
                 sprintf('Lập phiếu %s (#%d), loại %s.', $receiptCode, $receiptId, $type)
             );
             $pdo->commit();
-        } catch (PDOException $exception) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-
-            if (
-                $exception->getCode() === '23000'
-                && isset($exception->errorInfo[1])
-                && (int) $exception->errorInfo[1] === 1062
-            ) {
-                $this->renderForm($values, 'Một hoặc nhiều mã Serial/IMEI đã tồn tại trong hệ thống.');
-                return;
-            }
-
-            throw $exception;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
 
             throw $exception;
+        }
+
+        $this->redirect('/receipt/index');
+    }
+
+    public function confirmPayment(string $id): void
+    {
+        AuthMiddleware::checkPermission('inventory.manage_receipts');
+        if (!$this->isPostRequest()) {
+            http_response_code(405);
+            header('Allow: POST');
+            $this->renderIndex('Phương thức gửi yêu cầu không hợp lệ.');
+            return;
+        }
+
+        if (!$this->hasValidCsrfToken()) {
+            http_response_code(403);
+            $this->renderIndex('Yêu cầu không hợp lệ hoặc phiên đã hết hạn.');
+            return;
+        }
+
+        if (!preg_match('/\A[1-9][0-9]*\z/', $id)) {
+            $this->showNotFound();
+            return;
+        }
+
+        try {
+            $result = (new Receipt())->confirmPayment($id, (int) $_SESSION['user_id']);
+        } catch (DomainException $exception) {
+            $this->renderIndex($exception->getMessage());
+            return;
+        }
+
+        if ($result === null) {
+            $this->showNotFound();
+            return;
+        }
+        if ($result === false) {
+            $this->renderIndex('Phiếu kho này đã được thanh toán trước đó.');
+            return;
         }
 
         $this->redirect('/receipt/index');
@@ -258,17 +248,165 @@ final class ReceiptController extends Controller
         ]);
     }
 
+    public function contract(string $id): void
+    {
+        $receipt = (new Receipt())->getByIdWithDetails($id);
+        if (
+            $receipt === null
+            || $receipt['type'] !== 'OUT'
+            || (
+                (int) $receipt['total_quantity'] < 10
+                && (float) $receipt['total_amount'] < 50000000
+            )
+        ) {
+            $this->showNotFound();
+            return;
+        }
+
+        $items = (new ReceiptItem())->getItemsByReceiptId($id);
+        $this->render('receipt/contract', [
+            'items' => $items,
+            'pageTitle' => 'Hợp đồng HĐ-' . (string) $receipt['code'] . ' - Mini ERP',
+            'receipt' => $receipt,
+        ]);
+    }
+
+    public function invoice(string $id): void
+    {
+        $receipt = (new Receipt())->getByIdWithDetails($id);
+        if ($receipt === null) {
+            $this->showNotFound();
+            return;
+        }
+
+        $items = (new ReceiptItem())->getItemsByReceiptId($id);
+        $sandboxPaymentUrl = null;
+        $httpHost = $_SERVER['HTTP_HOST'] ?? '';
+        if (
+            is_string($httpHost)
+            && preg_match('/\A(?:[a-z0-9.-]+|\[[a-f0-9:]+\])(?::[0-9]{1,5})?\z/i', $httpHost) === 1
+        ) {
+            $sandboxPaymentUrl = 'http://' . $httpHost
+                . rtrim(BASE_URL, '/')
+                . '/receipt/sandboxPay/' . rawurlencode((string) $receipt['id']);
+        }
+
+        $this->render('receipt/invoice', [
+            'items' => $items,
+            'pageTitle' => 'Hóa đơn HD-' . (string) $receipt['code'] . ' - Mini ERP',
+            'receipt' => $receipt,
+            'sandboxPaymentUrl' => $sandboxPaymentUrl,
+        ]);
+    }
+
+    public function sandboxPay(string $id): void
+    {
+        if (!preg_match('/\A[1-9][0-9]*\z/', $id)) {
+            $this->showNotFound();
+            return;
+        }
+
+        $receiptModel = new Receipt();
+        $receipt = $receiptModel->getByIdWithDetails($id);
+        if ($receipt === null || $receipt['type'] !== 'OUT') {
+            $this->showNotFound();
+            return;
+        }
+
+        if (!$this->isPostRequest()) {
+            if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
+                http_response_code(405);
+                header('Allow: GET, POST');
+                $this->renderSandboxPay($receipt, false, 'Phương thức gửi yêu cầu không hợp lệ.');
+                return;
+            }
+
+            $isPaid = $receipt['payment_status'] === 'paid';
+            $this->renderSandboxPay(
+                $receipt,
+                $isPaid,
+                $isPaid ? 'Phiếu này đã được thanh toán.' : null
+            );
+            return;
+        }
+
+        if (!$this->hasValidCsrfToken()) {
+            http_response_code(403);
+            $this->renderSandboxPay($receipt, false, 'Yêu cầu không hợp lệ hoặc phiên đã hết hạn.');
+            return;
+        }
+
+        try {
+            $result = $receiptModel->confirmPayment($id, (int) $_SESSION['user_id']);
+        } catch (DomainException $exception) {
+            $this->renderSandboxPay($receipt, false, $exception->getMessage());
+            return;
+        }
+
+        if ($result === null) {
+            $this->showNotFound();
+            return;
+        }
+
+        $receipt = $receiptModel->getByIdWithDetails($id);
+        if ($receipt === null) {
+            $this->showNotFound();
+            return;
+        }
+
+        $this->renderSandboxPay(
+            $receipt,
+            true,
+            $result ? 'Giao dịch Sandbox thành công.' : 'Phiếu này đã được thanh toán trước đó.'
+        );
+    }
+
+    public function checkPaymentStatus(string $id): void
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+        header('Cache-Control: no-store, private');
+
+        if (!preg_match('/\A[1-9][0-9]*\z/', $id)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Mã phiếu không hợp lệ.']);
+            return;
+        }
+
+        $receipt = (new Receipt())->getByIdWithDetails($id);
+        if ($receipt === null) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Không tìm thấy phiếu kho.']);
+            return;
+        }
+
+        echo json_encode([
+            'payment_status' => $receipt['payment_status'],
+            'paid_at' => $receipt['paid_at'],
+        ], JSON_THROW_ON_ERROR);
+    }
+
     private function renderIndex(?string $error = null, int $page = 1): void
     {
         $result = (new Receipt())->getPaginatedWithDetails($page, self::ITEMS_PER_PAGE);
         $this->render('inventory/receipts/index', [
-            'canManage' => AuthMiddleware::hasRole(1)
-                || AuthMiddleware::hasRole(2)
-                || AuthMiddleware::hasRole(4),
+            'canManage' => AuthMiddleware::hasPermission('inventory.manage_receipts'),
+            'csrfToken' => $this->csrfToken(),
             'error' => $error,
             'pageTitle' => 'Giao dịch kho - Mini ERP',
             'pagination' => $result['pagination'],
             'receipts' => $result['items'],
+        ]);
+    }
+
+    private function renderSandboxPay(array $receipt, bool $success, ?string $message): void
+    {
+        $this->render('receipt/sandbox_pay', [
+            'csrfToken' => $this->csrfToken(),
+            'error' => $success ? null : $message,
+            'pageTitle' => 'Sandbox thanh toán - Mini ERP',
+            'receipt' => $receipt,
+            'success' => $success,
+            'successMessage' => $success ? $message : null,
         ]);
     }
 
@@ -286,7 +424,6 @@ final class ReceiptController extends Controller
             'error' => $error,
             'pageTitle' => 'Tạo phiếu kho - Mini ERP',
             'products' => (new Product())->findAll(),
-            'serials' => (new ProductSerial())->getAllForReceiptForm(),
             'suppliers' => $suppliers ?? (new Supplier())->findAll(),
             'values' => $values,
         ]);
@@ -303,8 +440,6 @@ final class ReceiptController extends Controller
                 'product_id' => '',
                 'qty' => '',
                 'price' => '',
-                'serial_numbers' => [],
-                'serial_text' => '',
             ]],
             'invalid_items' => false,
         ];
@@ -337,57 +472,6 @@ final class ReceiptController extends Controller
                 $item[$field] = is_scalar($value) ? trim((string) $value) : '';
             }
 
-            $postedSerialText = $postedItem['serial_numbers_text'] ?? '';
-            if (
-                !is_string($postedSerialText)
-                || strlen($postedSerialText) > 100000
-            ) {
-                $values['invalid_items'] = true;
-                $item['serial_text'] = '';
-            } else {
-                $item['serial_text'] = $postedSerialText;
-            }
-
-            $postedSerials = $postedItem['serial_numbers'] ?? [];
-            if (!is_array($postedSerials) || count($postedSerials) > self::MAX_SERIALS) {
-                $values['invalid_items'] = true;
-                $postedSerials = [];
-            }
-
-            if ($values['type'] === 'IN') {
-                if ($postedSerials !== []) {
-                    $values['invalid_items'] = true;
-                }
-
-                $serialLines = preg_split('/\R/u', $item['serial_text']);
-                if ($serialLines === false) {
-                    $values['invalid_items'] = true;
-                    $item['serial_numbers'] = [];
-                } else {
-                    $item['serial_numbers'] = array_values(array_filter(
-                        array_map('trim', $serialLines),
-                        static fn (string $serialNumber): bool => $serialNumber !== ''
-                    ));
-                    if (count($item['serial_numbers']) > self::MAX_SERIALS) {
-                        $values['invalid_items'] = true;
-                    }
-                }
-            } else {
-                if ($item['serial_text'] !== '') {
-                    $values['invalid_items'] = true;
-                }
-
-                $item['serial_numbers'] = [];
-                foreach ($postedSerials as $serialNumber) {
-                    if (!is_string($serialNumber)) {
-                        $values['invalid_items'] = true;
-                        continue;
-                    }
-
-                    $item['serial_numbers'][] = trim($serialNumber);
-                }
-            }
-
             $values['items'][] = $item;
         }
 
@@ -396,8 +480,6 @@ final class ReceiptController extends Controller
                 'product_id' => '',
                 'qty' => '',
                 'price' => '',
-                'serial_numbers' => [],
-                'serial_text' => '',
             ];
         }
 
@@ -439,16 +521,13 @@ final class ReceiptController extends Controller
         }
 
         $validItemCount = 0;
+        $hasPositivePrice = false;
         $productModel = new Product();
-        $serialModel = new ProductSerial();
-        $usedSerialNumbers = [];
         foreach ($values['items'] as $item) {
             if (
                 $item['product_id'] === ''
                 && $item['qty'] === ''
                 && $item['price'] === ''
-                && $item['serial_numbers'] === []
-                && $item['serial_text'] === ''
             ) {
                 continue;
             }
@@ -467,51 +546,12 @@ final class ReceiptController extends Controller
             if (!preg_match('/\A[0-9]{1,13}(?:\.[0-9]{1,2})?\z/', $item['price'])) {
                 return 'Đơn giá phải là số không âm, tối đa 2 chữ số thập phân.';
             }
+            if ((float) $item['price'] > 0) {
+                $hasPositivePrice = true;
+            }
 
             if ($productModel->findById($item['product_id']) === null) {
                 return 'Một sản phẩm được chọn không còn tồn tại.';
-            }
-
-            $isSerialTracked = $serialModel->hasSerialsForProduct($item['product_id']);
-            if ($values['type'] === 'IN') {
-                if (
-                    ($isSerialTracked || $item['serial_numbers'] !== [])
-                    && count($item['serial_numbers']) !== (int) $item['qty']
-                ) {
-                    return 'Số lượng Serial/IMEI phải khớp với số lượng nhập.';
-                }
-            } else {
-                if ($isSerialTracked && count($item['serial_numbers']) > (int) $item['qty']) {
-                    return 'Không thể chọn nhiều Serial/IMEI hơn số lượng xuất.';
-                }
-
-                if (!$isSerialTracked && $item['serial_numbers'] !== []) {
-                    return 'Sản phẩm này không quản lý Serial/IMEI.';
-                }
-            }
-
-            foreach ($item['serial_numbers'] as $serialNumber) {
-                if (
-                    preg_match('/\A[^\r\n\0]{1,100}\z/u', $serialNumber) !== 1
-                    || isset($usedSerialNumbers[bin2hex($serialNumber)])
-                ) {
-                    return 'Serial/IMEI không hợp lệ hoặc bị trùng.';
-                }
-
-                $serial = $serialModel->findBySerial($serialNumber);
-                if ($values['type'] === 'IN') {
-                    if ($serial !== null) {
-                        return 'Serial/IMEI đã tồn tại trong hệ thống.';
-                    }
-                } elseif (
-                    $serial === null
-                    || (int) $serial['product_id'] !== (int) $item['product_id']
-                    || $serial['status'] !== 'in_stock'
-                ) {
-                    return 'Một hoặc nhiều Serial/IMEI không còn trong kho.';
-                }
-
-                $usedSerialNumbers[bin2hex($serialNumber)] = true;
             }
 
             $validItemCount++;
@@ -519,6 +559,9 @@ final class ReceiptController extends Controller
 
         if ($validItemCount === 0) {
             return 'Phiếu kho phải có ít nhất một sản phẩm.';
+        }
+        if (!$hasPositivePrice) {
+            return 'Tổng tiền phiếu kho phải lớn hơn 0.';
         }
 
         return null;
@@ -531,8 +574,6 @@ final class ReceiptController extends Controller
             static fn (array $item): bool => $item['product_id'] !== ''
                 || $item['qty'] !== ''
                 || $item['price'] !== ''
-                || $item['serial_numbers'] !== []
-                || $item['serial_text'] !== ''
         ));
     }
 
@@ -555,93 +596,6 @@ final class ReceiptController extends Controller
         if ($statement->fetchColumn() === false) {
             throw new RuntimeException('Nhân viên lập phiếu không còn tồn tại.');
         }
-    }
-
-    private function markSerialsSold(
-        PDO $pdo,
-        int $productId,
-        array $serialNumbers,
-        int $receiptId
-    ): ?string {
-        $placeholders = [];
-        $parameters = ['product_id' => $productId];
-        foreach (array_values($serialNumbers) as $index => $serialNumber) {
-            $placeholder = 'serial_' . $index;
-            $placeholders[] = ':' . $placeholder;
-            $parameters[$placeholder] = $serialNumber;
-        }
-
-        $statement = $pdo->prepare(
-            'SELECT id, status FROM product_serials '
-            . 'WHERE product_id = :product_id '
-            . 'AND serial_number IN (' . implode(', ', $placeholders) . ') '
-            . 'FOR UPDATE'
-        );
-        $statement->execute($parameters);
-        $serials = $statement->fetchAll(PDO::FETCH_ASSOC);
-
-        if (count($serials) !== count($serialNumbers)) {
-            return 'Một hoặc nhiều Serial/IMEI không còn trong kho.';
-        }
-
-        $update = $pdo->prepare(
-            'UPDATE product_serials '
-            . 'SET status = :status, sold_date = :sold_date, receipt_out_id = :receipt_out_id '
-            . 'WHERE id = :id AND status = :in_stock'
-        );
-        foreach ($serials as $serial) {
-            if ($serial['status'] !== 'in_stock') {
-                return 'Một hoặc nhiều Serial/IMEI không còn trong kho.';
-            }
-
-            $update->execute([
-                'status' => 'sold',
-                'sold_date' => date('Y-m-d'),
-                'receipt_out_id' => $receiptId,
-                'id' => $serial['id'],
-                'in_stock' => 'in_stock',
-            ]);
-            if ($update->rowCount() !== 1) {
-                return 'Không thể cập nhật trạng thái Serial/IMEI.';
-            }
-        }
-
-        return null;
-    }
-
-    private function getAvailableSerialNumbers(
-        PDO $pdo,
-        int $productId,
-        int $count,
-        array $excludedSerialNumbers
-    ): array {
-        if ($count < 1) {
-            return [];
-        }
-
-        $exclusionPlaceholders = [];
-        foreach (array_values($excludedSerialNumbers) as $index => $serialNumber) {
-            $placeholder = ':excluded_serial_' . $index;
-            $exclusionPlaceholders[] = $placeholder;
-        }
-
-        $sql = 'SELECT serial_number FROM product_serials '
-            . 'WHERE product_id = :product_id AND status = :status';
-        if ($exclusionPlaceholders !== []) {
-            $sql .= ' AND serial_number NOT IN (' . implode(', ', $exclusionPlaceholders) . ')';
-        }
-        $sql .= ' ORDER BY id ASC LIMIT :serial_limit FOR UPDATE';
-
-        $statement = $pdo->prepare($sql);
-        $statement->bindValue(':product_id', $productId, PDO::PARAM_INT);
-        $statement->bindValue(':status', 'in_stock', PDO::PARAM_STR);
-        foreach (array_values($excludedSerialNumbers) as $index => $serialNumber) {
-            $statement->bindValue(':excluded_serial_' . $index, $serialNumber, PDO::PARAM_STR);
-        }
-        $statement->bindValue(':serial_limit', $count, PDO::PARAM_INT);
-        $statement->execute();
-
-        return array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN));
     }
 
     private function isPostRequest(): bool

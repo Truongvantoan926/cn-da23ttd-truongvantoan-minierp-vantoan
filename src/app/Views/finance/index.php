@@ -1,3 +1,8 @@
+<?php
+$exportQuery = http_build_query($filters);
+$exportHref = BASE_URL . '/finance/exportCsv' . ($exportQuery !== '' ? '?' . $exportQuery : '');
+?>
+
 <main class="container-fluid flex-grow-1 p-4 p-lg-5">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
@@ -5,7 +10,10 @@
             <p class="text-secondary mb-0">Theo dõi các giao dịch và số dư quỹ</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-success" href="<?= BASE_URL ?>/finance/exportCsv">
+            <a
+                class="btn btn-outline-success"
+                href="<?= htmlspecialchars($exportHref, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+            >
                 <i class="fa-solid fa-file-csv me-2" aria-hidden="true"></i>
                 Xuất Excel/CSV
             </a>
@@ -15,6 +23,12 @@
             </a>
         </div>
     </div>
+
+    <?php if (isset($error) && is_string($error) && $error !== ''): ?>
+        <div class="alert alert-danger" role="alert">
+            <?= htmlspecialchars($error, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
+        </div>
+    <?php endif; ?>
 
     <div class="row g-3 mb-4">
         <div class="col-md-4">
@@ -73,6 +87,74 @@
         </div>
     </div>
 
+    <form class="card border-0 shadow-sm mb-4" action="<?= BASE_URL ?>/finance/index" method="GET">
+        <div class="card-header bg-white py-3">
+            <h2 class="h5 mb-0">Tra cứu &amp; Lọc</h2>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-lg-4">
+                    <label for="search" class="form-label">Từ khóa</label>
+                    <input
+                        type="search"
+                        class="form-control"
+                        id="search"
+                        name="search"
+                        value="<?= htmlspecialchars($filters['search'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                        maxlength="255"
+                        placeholder="Mã phiếu, nội dung, danh mục"
+                    >
+                </div>
+                <div class="col-12 col-md-6 col-lg-2">
+                    <label for="type" class="form-label">Loại giao dịch</label>
+                    <select class="form-select" id="type" name="type">
+                        <option value="all" <?= $filters['type'] === 'all' ? 'selected' : '' ?>>Tất cả</option>
+                        <option value="in" <?= $filters['type'] === 'in' ? 'selected' : '' ?>>Thu</option>
+                        <option value="out" <?= $filters['type'] === 'out' ? 'selected' : '' ?>>Chi</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-2">
+                    <label for="date" class="form-label">Ngày cụ thể</label>
+                    <input
+                        type="date"
+                        class="form-control"
+                        id="date"
+                        name="date"
+                        value="<?= htmlspecialchars($filters['date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>"
+                    >
+                </div>
+                <div class="col-6 col-md-3 col-lg-1">
+                    <label for="month" class="form-label">Tháng</label>
+                    <select class="form-select" id="month" name="month">
+                        <option value="">Tất cả</option>
+                        <?php for ($month = 1; $month <= 12; $month++): ?>
+                            <option
+                                value="<?= $month ?>"
+                                <?= $filters['month'] === (string) $month ? 'selected' : '' ?>
+                            ><?= sprintf('%02d', $month) ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3 col-lg-1">
+                    <label for="year" class="form-label">Năm</label>
+                    <select class="form-select" id="year" name="year">
+                        <option value="">Tất cả</option>
+                        <?php foreach ($years as $year): ?>
+                            <option
+                                value="<?= (int) $year ?>"
+                                <?= $filters['year'] === (string) $year ? 'selected' : '' ?>
+                            ><?= (int) $year ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-lg-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Tra cứu</button>
+                    <a class="btn btn-outline-secondary" href="<?= BASE_URL ?>/finance/index">Đặt lại</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
     <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3">
             <h2 class="h5 mb-0">Danh sách giao dịch</h2>
@@ -84,6 +166,7 @@
                         <th scope="col" class="ps-4">Mã phiếu</th>
                         <th scope="col">Loại</th>
                         <th scope="col">Danh mục</th>
+                        <th scope="col">Nội dung / Diễn giải</th>
                         <th scope="col" class="text-end">Số tiền</th>
                         <th scope="col">Phương thức</th>
                         <th scope="col">Ngày GD</th>
@@ -93,13 +176,49 @@
                 <tbody>
                     <?php if ($transactions === []): ?>
                         <tr>
-                            <td colspan="7" class="text-center text-secondary py-5">
+                            <td colspan="8" class="text-center text-secondary py-5">
                                 Chưa có giao dịch thu/chi nào.
                             </td>
                         </tr>
                     <?php else: ?>
+                        <?php $lastDisplayedDate = null; ?>
                         <?php foreach ($transactions as $transaction): ?>
                             <?php $isIncome = $transaction['type'] === 'income'; ?>
+                            <?php $transactionDate = (string) $transaction['trans_date']; ?>
+                            <?php if ($lastDisplayedDate !== $transactionDate): ?>
+                                <?php
+                                $lastDisplayedDate = $transactionDate;
+                                $displayDate = DateTimeImmutable::createFromFormat('!Y-m-d', $transactionDate);
+                                $dayTotals = $dailyTotals[$transactionDate] ?? [
+                                    'total_income' => 0,
+                                    'total_expense' => 0,
+                                ];
+                                ?>
+                                <tr class="table-light">
+                                    <th colspan="8" class="px-4">
+                                        Ngày <?= $displayDate === false
+                                            ? htmlspecialchars($transactionDate, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                                            : $displayDate->format('d/m/Y') ?>
+                                        <span class="float-end fw-normal">
+                                            Thu:
+                                            <span class="text-success fw-semibold">
+                                                <?= \App\Core\CurrencyFormatter::format($dayTotals['total_income']) ?>&nbsp;₫
+                                            </span>
+                                            <span class="mx-2">|</span>
+                                            Chi:
+                                            <span class="text-danger fw-semibold">
+                                                <?= \App\Core\CurrencyFormatter::format($dayTotals['total_expense']) ?>&nbsp;₫
+                                            </span>
+                                        </span>
+                                    </th>
+                                </tr>
+                            <?php endif; ?>
+                            <?php
+                            $description = trim((string) ($transaction['description'] ?? ''));
+                            if ($description === '') {
+                                $description = trim((string) ($transaction['note'] ?? ''));
+                            }
+                            ?>
                             <tr>
                                 <td class="ps-4 fw-semibold">
                                     <?= htmlspecialchars((string) $transaction['code'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
@@ -110,11 +229,20 @@
                                     </span>
                                 </td>
                                 <td><?= htmlspecialchars((string) $transaction['category'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                                <td class="text-break">
+                                    <?= $description === ''
+                                        ? '—'
+                                        : nl2br(htmlspecialchars($description, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) ?>
+                                </td>
                                 <td class="text-end text-nowrap <?= $isIncome ? 'text-success' : 'text-danger' ?>">
                                     <?= \App\Core\CurrencyFormatter::format($transaction['amount']) ?>&nbsp;₫
                                 </td>
                                 <td><?= htmlspecialchars((string) $transaction['payment_method'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                                <td><?= htmlspecialchars((string) $transaction['trans_date'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
+                                <td class="text-nowrap">
+                                    <?= $displayDate === false
+                                        ? htmlspecialchars($transactionDate, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                                        : $displayDate->format('d/m/Y') ?>
+                                </td>
                                 <td class="pe-4">
                                     <?= htmlspecialchars((string) ($transaction['created_by_name'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>

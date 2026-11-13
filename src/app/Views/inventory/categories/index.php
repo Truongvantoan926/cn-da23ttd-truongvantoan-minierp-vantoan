@@ -45,14 +45,13 @@
                     <tr>
                         <th scope="col" class="ps-4">#</th>
                         <th scope="col">Tên danh mục</th>
-                        <th scope="col">Mô tả</th>
                         <th scope="col" class="text-end pe-4">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($categories === []): ?>
                         <tr>
-                            <td colspan="4" class="text-center text-secondary py-5">
+                            <td colspan="3" class="text-center text-secondary py-5">
                                 <?= $search === '' ? 'Chưa có danh mục nào.' : 'Không tìm thấy danh mục phù hợp.' ?>
                             </td>
                         </tr>
@@ -64,9 +63,6 @@
                                 </td>
                                 <td class="fw-semibold">
                                     <?= htmlspecialchars((string) $category['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
-                                </td>
-                                <td>
-                                    <?= htmlspecialchars((string) ($category['description'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?>
                                 </td>
                                 <td class="text-end pe-4 text-nowrap">
                                     <a

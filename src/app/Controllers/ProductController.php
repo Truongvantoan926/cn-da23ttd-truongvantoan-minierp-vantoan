@@ -11,7 +11,6 @@ use App\Models\ActivityLog;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
-use App\Models\ProductSerial;
 use PDOException;
 use Throwable;
 
@@ -41,17 +40,10 @@ final class ProductController extends Controller
             return;
         }
 
-        $serialResult = (new ProductSerial())->getPaginatedByProductId(
-            $id,
-            $this->requestedPage(),
-            self::ITEMS_PER_PAGE
-        );
         $this->render('inventory/products/show', [
             'images' => (new ProductImage())->getImagesByProductId($id),
             'pageTitle' => (string) $product['name'] . ' - Mini ERP',
-            'pagination' => $serialResult['pagination'],
             'product' => $product,
-            'serials' => $serialResult['items'],
         ]);
     }
 

@@ -50,15 +50,24 @@
 </style>
 
 <main class="container flex-grow-1 py-4 py-lg-5">
+    <?php
+    $isInbound = $receipt['type'] === 'IN';
+    $isLargeOutbound = !$isInbound
+        && (
+            (int) $receipt['total_quantity'] >= 10
+            || (float) $receipt['total_amount'] >= 50000000
+        );
+    ?>
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4 no-print">
-        <a class="btn btn-secondary btn-sm" href="<?= BASE_URL ?>/receipt/index">Quay lại danh sách</a>
-        <button class="btn btn-outline-secondary" type="button" onclick="window.print()">
-            <i class="fa-solid fa-print me-2" aria-hidden="true"></i>
-            In phiếu kho
-        </button>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a class="btn btn-secondary btn-sm text-nowrap" href="<?= BASE_URL ?>/receipt/index">Quay lại danh sách</a>
+            <?php if ($isLargeOutbound): ?>
+                <a class="btn btn-outline-secondary btn-sm text-nowrap" href="<?= BASE_URL ?>/receipt/contract/<?= rawurlencode((string) $receipt['id']) ?>">Hợp đồng</a>
+            <?php endif; ?>
+            <a class="btn btn-outline-primary btn-sm text-nowrap" href="<?= BASE_URL ?>/receipt/invoice/<?= rawurlencode((string) $receipt['id']) ?>">Hóa đơn</a>
+        </div>
     </div>
 
-    <?php $isInbound = $receipt['type'] === 'IN'; ?>
     <section class="card border-0 shadow-sm mx-auto" style="max-width: 1000px;">
         <div class="card-body p-4 p-lg-5">
             <div class="text-center mb-4">
@@ -119,7 +128,7 @@
                                 <td><?= htmlspecialchars((string) $item['sku'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td><?= htmlspecialchars((string) $item['product_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                 <td><?= htmlspecialchars((string) $item['unit'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                                <td class="text-end"><?= number_format((float) $item['qty'], 0, ',', '.') ?></td>
+                                <td class="text-end"><?= number_format((int) $item['qty'], 0, ',', '.') ?></td>
                                 <td class="text-end text-nowrap"><?= \App\Core\CurrencyFormatter::format($item['price']) ?>&nbsp;₫</td>
                                 <td class="text-end text-nowrap"><?= \App\Core\CurrencyFormatter::format($item['total']) ?>&nbsp;₫</td>
                             </tr>

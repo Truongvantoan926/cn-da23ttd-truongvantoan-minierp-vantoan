@@ -216,8 +216,8 @@
                                     </td>
                                     <td><?= htmlspecialchars((string) $product['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
                                     <td><?= htmlspecialchars((string) ($product['category_name'] ?? '—'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></td>
-                                    <td class="text-end"><?= number_format((float) $product['stock_qty'], 3, ',', '.') ?></td>
-                                    <td class="text-end"><?= number_format((float) $product['min_stock'], 3, ',', '.') ?></td>
+                                    <td class="text-end"><?= number_format((int) $product['stock_qty'], 0, ',', '.') ?></td>
+                                    <td class="text-end"><?= number_format((int) $product['min_stock'], 0, ',', '.') ?></td>
                                     <td class="text-end"><span class="badge text-bg-danger">Cần nhập thêm</span></td>
                                 </tr>
                             <?php endforeach; ?>
